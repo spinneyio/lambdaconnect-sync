@@ -1,8 +1,6 @@
 # lambdaconnect-sync
 
-Synchronisation library.
-
-<br> <br>
+Synchronisation library. <br> <br>
 [![Build Status](https://app.travis-ci.com/spinneyio/lambdaconnect-sync.svg?branch=master)](https://app.travis-ci.com/spinneyio/lambdaconnect-sync)
 
 ## Installation
@@ -14,7 +12,7 @@ Leiningen coordinates:
 
 ## Usage
 
-Each function requires config as first argument:
+Each function requires a config as the first argument:
 
 ```
 (def config {:log (constantly nil)
@@ -25,7 +23,7 @@ Each function requires config as first argument:
              :history d/history
              :tx->t d/tx->t
              :with d/with
-             :basis-t d/basis-t}
+             :basis-t d/basis-t})
 ```
 
 ## License
