@@ -112,3 +112,69 @@
         id-to-correct-id (get-id-to-correct-id config snapshot-before snapshot ids)
         update-entry (partial update-ids-in-entry datomic-relationships id-to-correct-id)]
     (doall (map update-entry transaction))))
+
+
+ (defn- get-ids-attrs-to-vals-from-entry
+   "Returns vector of vectors in the form: [[id attr] v]."
+   [entry]
+   (let [operator (first entry)]
+     (cond
+       (map? entry)
+       (let [id (:db/id entry)]
+         (->> entry
+              (mapv (fn [[attr v]] [[id attr] v]))))
+       (= :db/add operator)
+       (let [[_ id attr val] entry]
+         [[[id attr] val]])
+       (= :db/retract operator)
+       (let [[_ id attr _val] entry]
+         [[[id attr] nil]])
+       (#{:db/cas :db.fn/cas} operator)
+       (let [[_ id attr _old new] entry]
+         [[[id attr] new]])
+       :else [])))
+
+(defn- get-ids-attrs-to-vals-from-transaction [transaction]
+  (->> transaction
+       (mapcat get-ids-attrs-to-vals-from-entry)
+       (into {})))
+
+(defn get-colliding-ids-attrs [transaction1 transaction2]
+  (let [ids-attrs-to-vals1 (get-ids-attrs-to-vals-from-transaction transaction1)
+        ids-attrs-to-vals2 (get-ids-attrs-to-vals-from-transaction transaction2)
+        ids-attrs1 (set (keys ids-attrs-to-vals1))
+        ids-attrs2 (set (keys ids-attrs-to-vals2))
+        common-ids-attrs (set/intersection ids-attrs1 ids-attrs2)
+        not-equal-vals? (fn [id-attr]
+                          (let [v1 (get ids-attrs-to-vals1 id-attr)
+                                v2 (get ids-attrs-to-vals2 id-attr)]
+                            (not= v1 v2)))]
+    (filter not-equal-vals? common-ids-attrs)))
+
+(defn update-colliding-entry [colliding-ids-attrs entry]
+  (let [ids-attrs-to-vals (get-ids-attrs-to-vals-from-entry entry)
+        ids-attrs (->> ids-attrs-to-vals
+                       (map first)
+                       set)
+        colliding-ids-attrs-from-entry (set/intersection
+                                        ids-attrs
+                                        colliding-ids-attrs)]
+    (cond
+      (empty? colliding-ids-attrs-from-entry)
+      entry
+      (map? entry)
+      (apply dissoc entry colliding-ids-attrs-from-entry)
+      (vector? entry)
+      nil
+      :else
+      nil)))
+
+(defn concat-hooks-push-transactions [hooks-transaction push-transaction]
+  (let [colliding-ids-attrs (set (get-colliding-ids-attrs
+                                  hooks-transaction
+                                  push-transaction))]
+    (if (empty? colliding-ids-attrs)
+      (concat hooks-transaction push-transaction)
+      (let [update-entry (partial update-colliding-entry colliding-ids-attrs)
+            updated-push-transaction (keep update-entry push-transaction)]
+        (concat hooks-transaction updated-push-transaction)))))

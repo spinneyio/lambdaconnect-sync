@@ -1,3 +1,5 @@
 .clj-kondo/*
 .lsp/*
 .DS_STORE
+target/*
+.lein-repl-history
