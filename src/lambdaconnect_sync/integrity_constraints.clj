@@ -8,14 +8,15 @@
 (defn get-uuids-from-db [config uuids entity-name snapshot]
   (when (seq uuids)
     (let [entity-keyword (keyword entity-name "ident__")]
-      (set
-       ((:q config)
-        '[:find [?uuid ...]
-          :in $ [?uuid ...] ?attr
-          :where
-          [?e :app/uuid ?uuid]
-          [?e ?attr]]
-        snapshot uuids entity-keyword)))))
+      (->> ((:q config)
+            '[:find ?uuid
+              :in $ [?uuid ...] ?attr
+              :where
+              [?e :app/uuid ?uuid]
+              [?e ?attr]]
+            snapshot uuids entity-keyword)
+           (mapv first)
+           set))))
 
 (defn get-uuids-from-json [entity-name push-input]
   (into #{} (map :app/uuid (get push-input entity-name))))

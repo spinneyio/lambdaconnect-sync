@@ -4,10 +4,11 @@
 
 (defn get-datomic-relationships [config snapshot]
   (->>  ((:q config)
-         '[:find [?i ...] :where
+         '[:find ?i :where
            [?e :db/valueType :db.type/ref]
            [?e :db/ident ?i]]
          snapshot)
+        (mapv first)
         (filter #(not (string/starts-with? (namespace %) "db")))
         set))
 
@@ -49,11 +50,12 @@
        set))
 
 (defn- get-existing-ids [config snapshot ids]
-  ((:q config)
-   '[:find [?e ...]
-     :in $ [?e ...]
-     :where [?e :app/uuid]]
-   snapshot ids))
+  (->> ((:q config)
+        '[:find ?e
+          :in $ [?e ...]
+          :where [?e :app/uuid]]
+        snapshot ids)
+       (mapv first)))
 
 (defn- get-id-to-temporary-id [config snapshot ids]
   (->> ((:q config)
