@@ -145,7 +145,7 @@
   (if (string? db-id) ; cas doesnt like newly created objects. temporary ids are strings, real ones are numbers
     [:db/add db-id attrib new-value]
     (if (not= new-value nil)
-      [:db.fn/cas db-id attrib old-value new-value]
+      [:db/cas db-id attrib old-value new-value]
       (if (not= old-value nil)
         [:db/retract db-id attrib old-value]
         []))))
