@@ -36,13 +36,28 @@
 
 (defn get-misclasified-objects [config snapshot entity uuids]
   (->> ((:q config)
-        '[:find ?uuid
+        '[:find (pull ?e [*])
           :in $ ?id [?uuid ...]
           :where
           [?e :app/uuid ?uuid]
           (not [?e ?id])]
         snapshot (t/unique-datomic-identifier entity) uuids)
        (mapv first)))
+
+(defn object-with-ident? [object]
+  (let [attr-names (->> object keys (map name) set)]
+    (contains? attr-names "ident__")))
+
+(defn get-objects-without-ident [objects]
+  (filter (complement object-with-ident?) objects))
+
+(defn get-invalid-objects [config snapshot entity uuids]
+  (let [misclasified-objects (get-misclasified-objects config snapshot entity uuids)
+        objects-without-ident (get-objects-without-ident misclasified-objects)
+        misclasified-objects-uuids (doall (map :app/uuid misclasified-objects))
+        objects-without-ident-uuids (doall (map :app/uuid objects-without-ident))]
+    {:misclasified misclasified-objects-uuids
+     :without-ident objects-without-ident-uuids}))
 
 (defn get-related-objects
   "Fetches the objects that refer to the list of uuids by their relationship"

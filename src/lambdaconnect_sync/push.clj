@@ -272,8 +272,12 @@
                                                              duplicates (map first (filter #(> (count %) 1) (vals groups)))]
                                                          (reduce #(str %1 ", " %2) "" duplicates))))
     (doseq [[entity-name uuids] uuids-by-entity-name]
-      (let [duplicates (db/get-misclasified-objects config snapshot (get entities-by-name entity-name) uuids)]
-        (assert (empty? duplicates) (str "Wrong type of entity passed in input json - the uuids already exist in the db under different entities: " (reduce #(str %1 ", " %2) "" duplicates)))))))
+      (let [entity (get entities-by-name entity-name)
+            {:keys [misclasified without-ident]} (db/get-invalid-objects config snapshot entity uuids)
+            without-ident-uuids-string (reduce #(str %1 ", " %2) "" without-ident)
+            misclasified-uuids-string (reduce #(str %1 ", " %2) "" misclasified)]
+        (assert (empty? without-ident) (str "Objects without ident__: " without-ident-uuids-string))
+        (assert (empty? misclasified) (str "Wrong type of entity passed in input json - the uuids already exist in the db under different entities: " misclasified-uuids-string))))))
 
 
 (defn- update-changed-objects-transaction
