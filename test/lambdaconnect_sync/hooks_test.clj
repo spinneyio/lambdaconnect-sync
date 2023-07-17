@@ -19,4 +19,8 @@
       (is (= #{6} (hooks/get-ids-from-entry relationships [:db/retract 6 :attr 7])))
       (is (= #{6 7} (hooks/get-ids-from-entry relationships [:db/retract 6 :rel 7]))))
     (testing ":db/retractEntity entry"
-      (is (= #{8} (hooks/get-ids-from-entry relationships [:db/retractEntity 8]))))))
+      (is (= #{8} (hooks/get-ids-from-entry relationships [:db/retractEntity 8]))))
+    (testing "transactor function with internal transaction entry"
+      (is (= #{3} (hooks/get-ids-from-entry 
+                   relationships 
+                   [:some-transactor-fun 8 "aa" [[:db/add 3 :attr 7]] 10]))))))
