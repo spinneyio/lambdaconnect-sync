@@ -138,9 +138,9 @@
     
     (transactor-function? get-ids-from-entry datomic-relationships entry)
     
-    [(first entry) (map (fn [arg] (if (transaction? get-ids-from-entry datomic-relationships arg)
-                                    (map (partial update-ids-in-entry datomic-relationships id-to-correct-id) arg)
-                                    arg)) (rest entry))]
+    (concat [(first entry)] (map (fn [arg] (if (transaction? get-ids-from-entry datomic-relationships arg)
+                                             (map (partial update-ids-in-entry datomic-relationships id-to-correct-id) arg)
+                                             arg)) (rest entry)))
     :else entry))
 
 (defn update-ids-in-transaction [config datomic-relationships transaction snapshot-before snapshot]
