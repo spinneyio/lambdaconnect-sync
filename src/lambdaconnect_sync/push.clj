@@ -595,9 +595,9 @@
                  rejected-statements-per-object (functor/fmap 
                                                  #(set (map :statements %))
                                                  (group-by :object 
-                                                           (u/mapcat (fn [objects statements]
-                                                                       (map (fn [object] {:object object :statements statements}) objects)) 
-                                                                     rejected-objects-per-statement rejected-statements)))                 
+                                                           (apply concat (map (fn [objects statements]
+                                                                                (map (fn [object] {:object object :statements statements}) objects)) 
+                                                                              rejected-objects-per-statement rejected-statements))))                 
                  ]
              [new-transaction 
               rejected-ids
