@@ -490,12 +490,17 @@
 
   [permissions entity]
   (let [merged-permissions (merge-permissions permissions)
-        merged-permissions (into {} (filter (fn [[k v]] (or (boolean? v) (seq v))) merged-permissions))]
-    (-> merged-permissions
-        (#(merge-fields % entity))
-        (#(if (:writable-fields %) (update % :writable-fields set) %))
-        (#(if (:protected-fields %) (update % :protected-fields set) %)))))
-
+        merged-permissions (into {} (filter (fn [[k v]] (or (boolean? v) (seq v))) merged-permissions))
+        final-permissions (-> merged-permissions
+                              (#(merge-fields % entity))
+                              (#(if (:writable-fields %) (update % :writable-fields set) %))
+                              (#(if (:protected-fields %) (update % :protected-fields set) %)))]
+    ;; updatedAt is a special field that should always be allowed to be modified whenever any modification is possible
+    (if (:modify final-permissions)
+      (-> final-permissions 
+          (update :writable-fields #(conj (or % #{}) "updatedAt"))
+          (update :protected-fields #(disj (or % #{}) "updatedAt")))
+      final-permissions)))
 
 
 ; -------------------- new scoped push -------------------------
