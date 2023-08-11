@@ -498,8 +498,8 @@
     ;; updatedAt is a special field that should always be allowed to be modified whenever any modification is possible
     (if (:modify final-permissions)
       (-> final-permissions 
-          (#(if (:writable-fields %) (update :writable-fields (fn [w] (conj w "updatedAt"))) %))
-          (#(if (:pritected-fields %) (update :protected-fields (fn [w] (disj w "updatedAt"))) %)))
+          (#(if (:writable-fields %) (update % :writable-fields (fn [w] (conj w "updatedAt"))) %))
+          (#(if (:pritected-fields %) (update % :protected-fields (fn [w] (disj w "updatedAt"))) %)))
       final-permissions)))
 
 
