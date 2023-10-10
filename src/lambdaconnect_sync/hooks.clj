@@ -22,6 +22,23 @@
                               set)]
     (set/union relationship-ids #{(:db/id entry)})))
 
+(defn- transaction? 
+  "If we can extract ids from something, it is a transaction!"
+  [get-ids-from-entry datomic-relationships arg]
+  (and (sequential? arg)
+       (seq (reduce 
+             set/union #{} 
+             (map (partial get-ids-from-entry datomic-relationships) 
+                  arg)))))
+
+(defn- transactor-function? 
+  "Heuristics for transactor functions. 
+   We assume that if sth is an unknown vector it is a transactor function call. 
+   Then, if one or more of its arguments are transactions, we include these transactions in our computation. "
+  [get-ids-from-entry datomic-relationships entry]
+  (and (vector? entry) 
+       (seq (filter (partial transaction? get-ids-from-entry datomic-relationships) (rest entry)))))
+
 (defn get-ids-from-entry [datomic-relationships entry]
   (let [operator (first entry)]
     (cond
@@ -40,6 +57,17 @@
       (#{:db/retractEntity} operator)
       (let [[_ id] entry]
         #{id})
+      
+      (transactor-function? get-ids-from-entry datomic-relationships entry)           
+      (reduce set/union #{} 
+              (map (fn [subentry] 
+                     (if (sequential? subentry)
+                       (reduce 
+                        set/union #{} 
+                        (map (partial get-ids-from-entry datomic-relationships) 
+                             subentry))
+                       #{})) 
+                   (rest entry)))
       :else #{})))
 
 (defn- get-ids-from-transaction [datomic-relationships transaction]
@@ -107,6 +135,12 @@
               correct-val (get id-to-correct-id val val)]
           [op id attr correct-old-val correct-val])
         entry))
+    
+    (transactor-function? get-ids-from-entry datomic-relationships entry)
+    
+    (concat [(first entry)] (map (fn [arg] (if (transaction? get-ids-from-entry datomic-relationships arg)
+                                             (map (partial update-ids-in-entry datomic-relationships id-to-correct-id) arg)
+                                             arg)) (rest entry)))
     :else entry))
 
 (defn update-ids-in-transaction [config datomic-relationships transaction snapshot-before snapshot]
