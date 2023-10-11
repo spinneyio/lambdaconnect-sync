@@ -414,7 +414,7 @@
          [transaction [created-objects updated-objects] scoped-uuids]
          (do
            ((:log config) error-string)
-           (throw (ex-info "You are going to create object refering to non existing entity. \n" error-info))))))))
+           (throw (ex-info (str "You are going to create object refering to non existing entity. \n" (dissoc error-info :input-after-scope)) error-info))))))))
 
 (defn send-specific-hooks!
   "Creates a transaction"
