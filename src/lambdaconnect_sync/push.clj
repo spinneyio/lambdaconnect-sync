@@ -417,22 +417,39 @@
            (throw (ex-info "You are going to create object refering to non existing entity. \n" error-info))))))))
 
 (defn send-specific-hooks!
-  "Creates a transaction"
+  "Creates a transaction or a map {:transaction mq-transaction}"
   [config before-snapshot snapshot interesting-objects entities-by-name user hook-fun]
-  (u/mapcat (fn [[entity-name object-dict]]
-              (let [entity (get entities-by-name entity-name)
-                    objects (db/get-objects-by-uuids config entity (or (keys object-dict) []) snapshot)]
-                (apply concat (pmap (fn [object]
-                                      (hook-fun user object entity snapshot before-snapshot)) objects)))) (vec interesting-objects)))
+  (let [result (reduce #(merge-with concat %1 %2) 
+                       {:transaction [] :mq-transaction []} 
+                       (map (fn [[entity-name object-dict]]
+                              (let [entity (get entities-by-name entity-name)
+                                    objects (db/get-objects-by-uuids config entity (or (keys object-dict) []) snapshot)]
+                                (reduce #(merge-with concat %1 %2) 
+                                        {:transaction [] :mq-transaction []} 
+                                        (pmap (fn [object]
+                                                (let [result (hook-fun user object entity snapshot before-snapshot)]
+                                                  (if (map? result) result {:transaction result :mq-transaction []}))) objects)))) (vec interesting-objects)))]
+    (if (seq (:mq-transaction result))
+      result
+      (:transaction result))))
 
 (defn send-specific-update-hooks!
-  "Creates a transaction"
+  "Creates a transaction or a map {:transaction mq-transaction}"
   [config before-snapshot snapshot interesting-objects entities-by-name user hook-fun]
-  (u/mapcat (fn [[entity-name object-dict]]
-              (let [entity (get entities-by-name entity-name)
-                    objects (db/get-objects-by-uuids config entity (or (keys object-dict) []) snapshot)]
-                (apply concat (map (fn [object]
-                                     (hook-fun user object entity snapshot before-snapshot)) objects)))) (vec interesting-objects)))
+  (let [result (reduce #(merge-with concat %1 %2) 
+                       {:transaction [] :mq-transaction []} 
+                       (map (fn [[entity-name object-dict]]
+                              (let [entity (get entities-by-name entity-name)
+                                    objects (db/get-objects-by-uuids config entity (or (keys object-dict) []) snapshot)]
+                                (reduce #(merge-with concat %1 %2) 
+                                        {:transaction [] :mq-transaction []} 
+                                        (pmap (fn [object]
+                                                (let [result (hook-fun user object entity snapshot before-snapshot)]
+                                                  (if (map? result) result {:transaction result :mq-transaction []}))) objects)))) (vec interesting-objects)))]
+    (if (seq (:mq-transaction result))
+      result
+      (:transaction result))))
+
 
 
 ; -------------------- scope push helpers ----------------------
@@ -499,7 +516,7 @@
     (if (:modify final-permissions)
       (-> final-permissions 
           (#(if (:writable-fields %) (update % :writable-fields (fn [w] (conj w "updatedAt"))) %))
-          (#(if (:pritected-fields %) (update % :protected-fields (fn [w] (disj w "updatedAt"))) %)))
+          (#(if (:protected-fields %) (update % :protected-fields (fn [w] (disj w "updatedAt"))) %)))
       final-permissions)))
 
 
