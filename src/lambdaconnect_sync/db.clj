@@ -14,10 +14,10 @@
          fields-to-fetch (set (concat [:db/id]
                                       (map #(keyword "app" %) t/special-attribs)
                                       (map t/datomic-name (vals (:attributes entity)))
-                                      (map (fn [r] {(t/datomic-name r) [:app/uuid :db/id]})
+                                      (map (fn [r] {[(t/datomic-name r) :limit nil] [:app/uuid :db/id]})
                                            datomic-relationships)
                                       (if fetch-inverses
-                                        (map (fn [r] {(t/datomic-inverse-name r) [:app/uuid :db/id]})
+                                        (map (fn [r] {[(t/datomic-inverse-name r) :limit nil] [:app/uuid :db/id]})
                                              inverses) [])))
          ret-val ((:pull-many config) snapshot fields-to-fetch ids)]
      ret-val)))
