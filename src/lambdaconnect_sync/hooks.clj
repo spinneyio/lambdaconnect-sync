@@ -127,7 +127,7 @@
           entry (if (contains? datomic-relationships attr)
                   (conj (pop entry) (get id-to-correct-id val val))
                   entry)]
-      (assoc entry 1 (get id-to-correct-id id)))
+      (assoc entry 1 (get id-to-correct-id id id)))
     (#{:db/cas :db.fn/cas} (first entry))
     (let [[op id attr old-val val] entry]
       (if (contains? datomic-relationships attr)
