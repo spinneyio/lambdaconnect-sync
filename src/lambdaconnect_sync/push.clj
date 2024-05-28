@@ -469,7 +469,7 @@
     (not= l-m r-m) (vec (set (concat l r)))
     :else []))
 
-(defn merge-fields [perms entity]
+(defn- merge-fields [perms entity]
   (let [{w-f :writable-fields p-f :protected-fields} perms
         all-fields (into #{} (concat (keys (:attributes entity)) (keys (:relationships entity))))
         all-fields-except-protected (difference all-fields (into #{} p-f))
@@ -480,7 +480,7 @@
           (assoc :writable-fields writable-fields))
       perms)))
 
-(defn merge-permissions [permissions]
+(defn- merge-permissions [permissions]
   (reduce (fn [perms {c :create m :modify w :writable-fields p :protected-fields}]
             (let [p-m (:modify perms)]
               (-> perms
