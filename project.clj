@@ -14,4 +14,4 @@
              :test          [:project/dev :project/test]
 
              :project/test {:dependencies [[com.datomic/peer "1.0.7075"]]}
-             :project/dev {:plugins [[com.jakemccrary/lein-test-refresh "0.24.1"]]}})
+             :project/dev {:plugins [[com.jakemccrary/lein-test-refresh "0.25.0"]]}})

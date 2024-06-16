@@ -593,7 +593,8 @@
                                                                                       (keys)
                                                                                       (map name)
                                                                                       (set)) tags)]
-                                                      (assert (empty? (apply clojure.set/intersection replacements))
+                                                      (assert (or (<= (count replacements) 1)
+                                                                  (empty? (apply clojure.set/intersection replacements)))
                                                               (str "The tags " (set tags) " have duplicated replace-fields. There is no way to determine which one to use: " (apply clojure.set/intersection replacements)))
                                                       (apply clojure.set/union replacements))))
 
