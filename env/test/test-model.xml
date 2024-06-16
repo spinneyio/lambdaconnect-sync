@@ -1,0 +1,104 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<model type="com.apple.IDECoreDataModeler.DataModel" documentVersion="1.0" lastSavedToolsVersion="21279" systemVersion="21G115" minimumToolsVersion="Xcode 7.3" sourceLanguage="Objective-C" userDefinedModelVersionIdentifier="">
+    <entity name="LAGame" representedClassName=".LAGame" syncable="YES">
+        <attribute name="active" attributeType="Boolean" defaultValueString="YES" usesScalarValueType="NO" syncable="YES"/>
+        <attribute name="createdAt" attributeType="Date" minDateTimeInterval="0" usesScalarValueType="NO" syncable="YES"/>
+        <attribute name="date" attributeType="Date" defaultDateTimeInterval="552182700" usesScalarValueType="NO" syncable="YES"/>
+        <attribute name="gameDescription" attributeType="String" minValueString="0" maxValueString="1024" syncable="YES">
+            <userInfo>
+                <entry key="datomic-description" value="blablabla"/>
+            </userInfo>
+        </attribute>
+        <attribute name="inThePast" attributeType="Boolean" defaultValueString="NO" usesScalarValueType="NO" syncable="YES"/>
+        <attribute name="skillLevelRequired" attributeType="String" maxValueString="15" syncable="YES"/>
+        <attribute name="teamName" optional="YES" attributeType="String" maxValueString="100" syncable="YES"/>
+        <attribute name="title" attributeType="String" minValueString="3" maxValueString="1024" syncable="YES"/>
+        <attribute name="updatedAt" attributeType="Date" usesScalarValueType="NO" syncable="YES"/>
+        <attribute name="uuid" attributeType="String" maxValueString="36" syncable="YES"/>
+        <relationship name="location" maxCount="1" deletionRule="Nullify" destinationEntity="LALocation" inverseName="games" inverseEntity="LALocation" syncable="YES"/>
+        <relationship name="organiser" maxCount="1" deletionRule="Nullify" destinationEntity="LAUser" inverseName="organisedGames" inverseEntity="LAUser" syncable="YES"/>
+        <relationship name="ticketsSold" optional="YES" toMany="YES" deletionRule="Nullify" destinationEntity="LATicketsSold" inverseName="game" inverseEntity="LATicketsSold" syncable="YES"/>
+        <relationship name="teamsPlayed" optional="YES" toMany="YES" deletionRule="Nullify" destinationEntity="LATeam" inverseName="playedIn" inverseEntity="LATeam" syncable="YES"/>
+        <userInfo>
+            <entry key="key" value="value"/>
+            <entry key="metadata" value="1"/>
+        </userInfo>
+    </entity>
+    <entity name="LALocation" representedClassName=".LALocation" syncable="YES">
+        <attribute name="active" attributeType="Boolean" defaultValueString="YES" usesScalarValueType="NO" syncable="YES"/>
+        <attribute name="bottomHash" optional="YES" attributeType="String" maxValueString="3" indexed="YES" syncable="YES"/>
+        <attribute name="centerHash" optional="YES" attributeType="String" maxValueString="3" indexed="YES" syncable="YES"/>
+        <attribute name="city" optional="YES" attributeType="String" maxValueString="100" syncable="YES"/>
+        <attribute name="country" optional="YES" attributeType="String" maxValueString="100" syncable="YES"/>
+        <attribute name="createdAt" attributeType="Date" usesScalarValueType="NO" syncable="YES"/>
+        <attribute name="latitude" optional="YES" attributeType="Double" minValueString="-90" maxValueString="90" usesScalarValueType="NO" syncable="YES"/>
+        <attribute name="leftHash" optional="YES" attributeType="String" maxValueString="3" indexed="YES" syncable="YES"/>
+        <attribute name="longitude" optional="YES" attributeType="Double" minValueString="-180" maxValueString="180" usesScalarValueType="NO" syncable="YES"/>
+        <attribute name="number" optional="YES" attributeType="String" maxValueString="20" syncable="YES"/>
+        <attribute name="rightHash" optional="YES" attributeType="String" maxValueString="3" indexed="YES" syncable="YES"/>
+        <attribute name="street" optional="YES" attributeType="String" maxValueString="30" syncable="YES"/>
+        <attribute name="topHash" optional="YES" attributeType="String" maxValueString="3" indexed="YES" syncable="YES"/>
+        <attribute name="updatedAt" attributeType="Date" usesScalarValueType="NO" syncable="YES"/>
+        <attribute name="uuid" attributeType="String" maxValueString="36" syncable="YES"/>
+        <attribute name="zipCode" optional="YES" attributeType="String" maxValueString="100" syncable="YES"/>
+        <relationship name="games" optional="YES" toMany="YES" deletionRule="Nullify" destinationEntity="LAGame" inverseName="location" inverseEntity="LAGame" syncable="YES"/>
+        <relationship name="ticketsSold" optional="YES" toMany="YES" deletionRule="Nullify" destinationEntity="LATicketsSold" inverseName="location" inverseEntity="LATicketsSold" syncable="YES"/>
+        <relationship name="users" optional="YES" toMany="YES" deletionRule="Nullify" destinationEntity="LAUser" inverseName="address" inverseEntity="LAUser" syncable="YES"/>
+    </entity>
+    <entity name="LASyncInfo" representedClassName=".LASyncInfo" syncable="YES">
+        <attribute name="counter" optional="YES" attributeType="Integer 64" defaultValueString="0" usesScalarValueType="NO" syncable="YES"/>
+        <attribute name="date" optional="YES" attributeType="Date" usesScalarValueType="NO" syncable="YES"/>
+        <attribute name="name" optional="YES" attributeType="String" syncable="YES"/>
+        <attribute name="type" optional="YES" attributeType="String" syncable="YES"/>
+    </entity>
+    <entity name="LATeam" representedClassName=".LATeam" syncable="YES">
+        <attribute name="active" attributeType="Boolean" defaultValueString="YES" usesScalarValueType="NO" syncable="YES"/>
+        <attribute name="createdAt" attributeType="Date" minDateTimeInterval="0" usesScalarValueType="NO" syncable="YES"/>
+        <attribute name="updatedAt" attributeType="Date" usesScalarValueType="NO" syncable="YES"/>
+        <attribute name="uuid" attributeType="String" maxValueString="36" syncable="YES"/>
+        <attribute name="uuid" attributeType="String" maxValueString="36" syncable="YES"/>
+        <attribute name="name" attributeType="String" maxValueString="36" syncable="YES"/>
+        <attribute name="anthemTitle" attributeType="String" maxValueString="36" syncable="YES"/>
+        <relationship name="organiser" maxCount="1" deletionRule="Nullify" destinationEntity="LAUser" inverseName="playsFor" inverseEntity="LAUser" syncable="YES"/>
+        <relationship name="tickets" optional="YES" toMany="YES" deletionRule="Nullify" destinationEntity="LATicketsSold" inverseName="teamsInvolved" inverseEntity="LATicketsSold"/>
+        <relationship name="playedIn" optional="YES" toMany="YES" deletionRule="Nullify" destinationEntity="LAGame" inverseName="teamsPlayed" inverseEntity="LAGame" syncable="YES"/>
+    </entity>
+    <entity name="LATicketsSold" representedClassName=".LATicketsSold" syncable="YES">
+        <attribute name="active" attributeType="Boolean" defaultValueString="YES" usesScalarValueType="NO" syncable="YES"/>
+        <attribute name="createdAt" attributeType="Date" minDateTimeInterval="0" usesScalarValueType="NO" syncable="YES"/>
+        <attribute name="updatedAt" attributeType="Date" usesScalarValueType="NO" syncable="YES"/>
+        <attribute name="uuid" attributeType="String" maxValueString="36" syncable="YES"/>
+        <attribute name="uuid" attributeType="String" maxValueString="36" syncable="YES"/>
+        <attribute name="price" attributeType="Double" maxValueString="36" syncable="YES"/>
+        <relationship name="location" maxCount="1" deletionRule="Nullify" destinationEntity="LALocation" inverseName="ticketsSold" inverseEntity="LALocation" syncable="YES"/>
+        <relationship name="game" optional="YES" toMany="YES" deletionRule="Nullify" destinationEntity="LAGame" inverseName="ticketsSold" inverseEntity="LAGame" syncable="YES"/>
+        <relationship name="teamsInvolved" optional="YES" toMany="YES" deletionRule="Nullify" destinationEntity="LATeam" inverseName="tickets" inverseEntity="LATeam"/> 
+    </entity>
+    <entity name="LAUser" representedClassName=".LAUser" syncable="YES">
+        <attribute name="accessToken" optional="YES" transient="YES" attributeType="String" syncable="YES"/>
+        <attribute name="active" attributeType="Boolean" defaultValueString="YES" usesScalarValueType="NO" syncable="YES"/>
+        <attribute name="birthDate" attributeType="Date" usesScalarValueType="NO" syncable="YES"/>
+        <attribute name="createdAt" attributeType="Date" usesScalarValueType="NO" syncable="YES"/>
+        <attribute name="email" attributeType="String" minValueString="5" maxValueString="40" regularExpressionString="\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b" syncable="YES"/>
+        <attribute name="facebookId" optional="YES" attributeType="String" maxValueString="100" syncable="YES"/>
+        <attribute name="firstName" attributeType="String" minValueString="2" maxValueString="30" syncable="YES"/>
+        <attribute name="gender" attributeType="String" minValueString="1" maxValueString="1" regularExpressionString="[UMF]" syncable="YES"/>
+        <attribute name="internalUserId" attributeType="UUID" minValueString="1" maxValueString="1000" usesScalarValueType="NO"/>
+        <attribute name="lastName" attributeType="String" minValueString="2" maxValueString="30" syncable="YES"/>
+        <attribute name="password" optional="YES" transient="YES" attributeType="String" syncable="YES"/>
+        <attribute name="photoUrl" optional="YES" attributeType="String" minValueString="3" maxValueString="1024" syncable="YES"/>
+        <attribute name="profileConfirmed" attributeType="Boolean" defaultValueString="NO" usesScalarValueType="NO" syncable="YES"/>
+        <attribute name="pushNotificationsEnabled" attributeType="Boolean" defaultValueString="YES" usesScalarValueType="NO" syncable="YES"/>
+        <attribute name="updatedAt" attributeType="Date" usesScalarValueType="NO" syncable="YES"/>
+        <attribute name="uuid" attributeType="String" maxValueString="36" syncable="YES"/>
+        <relationship name="address" maxCount="1" deletionRule="Nullify" destinationEntity="LALocation" inverseName="users" inverseEntity="LALocation" syncable="YES"/>
+        <relationship name="organisedGames" optional="YES" toMany="YES" deletionRule="Nullify" destinationEntity="LAGame" inverseName="organiser" inverseEntity="LAGame" syncable="YES"/>
+        <relationship name="playsFor" optional="YES" toMany="YES" deletionRule="Nullify" destinationEntity="LATeam" inverseName="organiser" inverseEntity="LATeam" syncable="YES"/>
+    </entity>
+    <elements>
+        <element name="LAGame" positionX="-702" positionY="-235" width="128" height="315"/>
+        <element name="LALocation" positionX="-164" positionY="36" width="128" height="315"/>
+        <element name="LASyncInfo" positionX="-317" positionY="-270" width="128" height="105"/>
+        <element name="LAUser" positionX="-515" positionY="198" width="128" height="390"/>
+    </elements>
+</model>

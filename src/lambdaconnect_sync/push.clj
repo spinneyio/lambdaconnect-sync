@@ -85,7 +85,7 @@
                                                  (get (:inverse-entity relationship))
                                                  :relationships
                                                  (get (:inverse-name relationship)))]
-                                 (assert inverse "Logic error")
+                                 (assert inverse (str "Logic error in xml model file - no inverse: " (into {} relationship)))
                                  (if (and (not (:to-many relationship))
                                           (not (:to-many inverse)))
                                    {(:name entity)
@@ -558,9 +558,32 @@
            _ ((:log config) (str "---------------------------------------------"))
            _ ((:log config) (str "TAGS: " tags-by-ids))
 
+           constants (:constants scoping-edn)
+           constant-value #(if (and (keyword? %)
+                                    (= (namespace %) "constant"))
+                             (let [value (get constants (keyword (name %)))] 
+                               (assert (contains? constants (keyword (name %))) (str "Constant " % " not present in constants map: ." constants))
+                               (if (delay? value) @value value))
+                             %)
+           process-constants-for-permissions (fn [permissions]
+                                               (-> permissions
+                                                   (update :modify constant-value)
+                                                   (update :create constant-value)
+                                                   (update :writable-fields constant-value)
+                                                   (update :protected-fields constant-value)
+                                                   (update :writable-fields #(map constant-value %))
+                                                   (update :protected-fields #(map constant-value %))
+                                                   (update :writable-fields flatten)
+                                                   (update :protected-fields flatten)
+                                                   (select-keys (keys permissions))))
+          
+
            permissions-for-object (fn [uuid] ; a helper that takes an uuid and returns the merged permissions map (an object can belong to multiple tags)
                                     (let [tags (get tags-by-ids uuid)
-                                          permissions (map #(:permissions (get scoping-edn %)) tags)]
+                                          permissions (map #(->> % 
+                                                                 (get scoping-edn)
+                                                                 (:permissions)                                                                  
+                                                                 (process-constants-for-permissions)) tags)]
                                       (combined-permissions-for-object permissions entity)))
 
            objects-from-entry (fn [entry]
@@ -641,12 +664,13 @@
                                      (functor/fmap #(if (empty? %) [] (vals %)) updated-objects))
 
            excise-field-from-transaction (fn [entity object-id transaction field-name]  ; object-id is assumed to be internal db 
-                                           ;; Returns transaction with operations modifying a field agains permissions excised.
+                                           ;; Returns transaction with operations modifying a field against permissions excised.
                                            (let [attribute (get (:attributes entity) field-name)
                                                  relationship (get (:relationships entity) field-name)
                                                  datomic-relationship (get (:datomic-relationships entity) field-name)
                                                  inverse-relationship (when relationship (get (:relationships (get entities-by-name (:inverse-entity relationship))) (:inverse-name relationship)))]
-                                             (assert (or attribute relationship) (str "Logic error: " (:name entity) " obj-id " object-id " trans: " (vec transaction) " field-name: " field-name))
+                                             (assert (or attribute relationship) 
+                                                     (str "Scoping field '" field-name "' failed for entity '" (:name entity) "', obj-id: '" object-id "'. Such a field does not exist in the model. Make sure your scoping files are correct and scoping constants employed are correct as well. transaction: " (vec transaction)))
                                              (filter (fn [entry]
                                                        (or (map? entry) ; we do not filter created objects here
                                                            (let [op (first entry)
@@ -708,7 +732,20 @@
                                                                    (reject-entities transaction-after-object-rejections (vec objects-to-filter-fields) {}))]
            (if (and (empty? rejected-object-info)
                     (empty? field-rejections))
-             (let [ids-in-transaction (apply union (map objects-from-entry transaction))
+             (let [;; Filtering transactions for objects that only contain updatedAt (we do not want those)
+                   ;; Memoize for convenience and performance
+                   memoized-objs (memoize objects-from-entry)
+                   objects-to-excise (->> transaction
+                                          (u/group-by-keysets memoized-objs)
+                                          (filter (fn [[k v]] (and (= (count v) 1)
+                                                                   (= :db/cas (ffirst v))
+                                                                   (= :app/updatedAt (nth (first v) 2)))))
+                                          (keys)
+                                          (set))
+
+                   transaction (filter #(not (seq (clojure.set/intersection objects-to-excise (memoized-objs %)))) transaction)
+
+                   ids-in-transaction (apply union (map memoized-objs transaction))
                    filtered-created-objects (functor/fmap #(into {} (filter (fn [[k o]] (ids-in-transaction (:db/id o))) %)) created-objects)
                    filtered-updated-objects (functor/fmap #(into {} (filter (fn [[k o]] (ids-in-transaction (:db/id o))) %)) updated-objects)]
                ((:log config) "-----------------------------")
