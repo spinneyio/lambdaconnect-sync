@@ -117,6 +117,20 @@
     {:tx transaction
      :rejections rejections}))
 
+(defn pull [snapshot user-uuid params suppress-log? constants]
+  (let [read-edn (fn [path] (read-string (slurp path)))
+        entities-by-name (mp/entities-by-name "env/test/test-model.xml")
+        scoping-edn (read-edn "env/test/test-scope.edn")
+        _ (scoping/validate-pull-scope entities-by-name scoping-edn)                
+        pull-scoping-edn (assoc scoping-edn
+                                :constants constants)
+        time (java.util.Date.)       
+        user (d/entity snapshot (d/q '[:find ?e . :in $ ?uuid :where [?e :app/uuid ?uuid]] snapshot user-uuid))
+        config (if-not suppress-log? 
+                 (assoc (get-mobile-sync-config) :log println)
+                 (get-mobile-sync-config))]
+    (sync/pull config params user snapshot entities-by-name pull-scoping-edn)))
+
 (deftest test-core-data-xml-conversion
   (testing "Reading model file one"
     (let [model (mp/entities-by-name "env/test/test-model.xml")]
@@ -254,3 +268,89 @@
         (is (empty? tx))
         (is (not (empty? rejected-fields)))
         (is (empty? rejected-objects))))))
+
+(deftest ^:test-refresh/focus 
+  replace-fields
+  (let [user-uuid (random-uuid)
+        location-uuid (random-uuid)
+        ebn (mp/entities-by-name "env/test/test-model.xml")
+        _ @(d/transact @conn [{:app/uuid user-uuid}])
+        snapshot (d/db @conn)
+        la-user (-> (gen/sample (s/gen (mp/spec-for-name :LAUser)) 1)
+                    (first)
+                    (assoc :LAUser/internalUserId user-uuid)
+                    (assoc :LAUser/address {:app/uuid location-uuid})
+                    (assoc :LAUser/organisedGames [])
+                    (assoc :LAUser/playsFor []))
+        la-location (-> (gen/sample (s/gen (mp/spec-for-name :LALocation)) 100)
+                        (first)                        
+                        (assoc :app/uuid location-uuid)
+                        (assoc :LALocation/city "Krakow")
+                        (assoc :LALocation/latitude 31.21)
+                        (assoc :LALocation/country "Polska")
+                        (assoc :LALocation/games [])
+                        (assoc :LALocation/users [{:app/uuid (:app/uuid la-user)}])
+                        (assoc :LALocation/ticketsSold []))
+        json {"LAUser" [(mp/clojure-to-json la-user (get ebn "LAUser"))]
+              "LALocation" [(mp/clojure-to-json la-location (get ebn "LALocation"))]} 
+        {:keys [tx rejections]} 
+        (testing "Even though the protected fields ('some-new-fields') are nonsense, they are not being checked here since we do not use them when first creating an object"
+          (push-transaction snapshot user-uuid json
+                            true {:wow (delay true)
+                                  :are-you-there? false
+                                  :can-create? true
+                                  :whatsupp? true
+                                  :some-new-fields ["lala"]}))
+        {:keys [rejected-objects rejected-fields]} rejections]
+    (is (not (empty? tx)))
+    (is (empty? rejected-objects))
+    (is (empty? rejected-fields))    
+    
+
+    (testing "Do a pull (fails because constant 'lat' is not defined)"
+      (let [snapshot (speculate snapshot tx)]
+        
+        (is (thrown? AssertionError (pull snapshot user-uuid {"LAUser" 0 "LALocation" 0} 
+                                          true {:wow (delay true)
+                                                :are-you-there? false
+                                                :can-create? true
+                                                :whatsupp? true                                
+                                                :some-new-fields ["lala"]})))))
+
+    (testing "Do a pull and see what came in - replacements should have arrived"
+      (let [snapshot (speculate snapshot tx)
+            result (pull snapshot user-uuid {"LAUser" 0 "LALocation" 0} 
+                          true {:wow (delay true)
+                                :are-you-there? false
+                                :can-create? true
+                                :whatsupp? true                                
+                                :lat 82.3
+                                :some-new-fields ["lala"]})]
+        ;; Replacement with another field
+        (is (= "Polska" (-> result 
+                            (get "LALocation")
+                            (first)
+                            (get "city"))))
+        ;; Replacement with a constant        
+        (is (= 82.3 (-> result 
+                        (get "LALocation")
+                        (first)
+                        (get "latitude"))))))
+
+    (testing "Try editing succeeds but replaced fields are not actually replaced"
+      (let [snapshot (speculate snapshot tx)
+            {:keys [tx rejections]} 
+            (push-transaction snapshot user-uuid {"LALocation" [(mp/clojure-to-json (assoc la-location 
+                                                                                       :LALocation/city "Bombaj"
+                                                                                       :LALocation/latitude 85.0) (get ebn "LALocation"))]} 
+                              true {:wow (delay true)
+                                    :are-you-there? false
+                                    :can-create? true
+                                    :whatsupp? true
+                                    :some-new-fields ["firstName"]})
+            {:keys [rejected-objects rejected-fields]} rejections]
+
+        (is (empty? tx))
+        (is (empty? rejected-fields))
+        (is (empty? rejected-objects))))
+))

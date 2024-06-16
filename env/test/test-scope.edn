@@ -12,8 +12,8 @@
                          :replace-fields {:city :country
                                           :latitude :constant/lat}
                          :permissions {:modify true
-                                       :create false
-                                       :writable-fields ["games"]}}
+                                       :create true
+                                       :writable-fields ["games" "city" "latitude"]}}
 
 
  :LAGame.organisedByUser {:constraint (or [= :inThePast :constant/are-you-there?]

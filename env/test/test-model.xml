@@ -26,18 +26,18 @@
     </entity>
     <entity name="LALocation" representedClassName=".LALocation" syncable="YES">
         <attribute name="active" attributeType="Boolean" defaultValueString="YES" usesScalarValueType="NO" syncable="YES"/>
-        <attribute name="bottomHash" optional="YES" attributeType="String" maxValueString="3" indexed="YES" syncable="YES"/>
-        <attribute name="centerHash" optional="YES" attributeType="String" maxValueString="3" indexed="YES" syncable="YES"/>
-        <attribute name="city" optional="YES" attributeType="String" maxValueString="100" syncable="YES"/>
-        <attribute name="country" optional="YES" attributeType="String" maxValueString="100" syncable="YES"/>
+        <attribute name="bottomHash" optional="YES" attributeType="String" maxValueString="3" minValueString="3" indexed="YES" syncable="YES"/>
+        <attribute name="centerHash" optional="YES" attributeType="String" maxValueString="3" minValueString="3" indexed="YES" syncable="YES"/>
+        <attribute name="city" optional="YES" attributeType="String" maxValueString="100" minValueString="2" syncable="YES"/>
+        <attribute name="country" optional="YES" attributeType="String" maxValueString="100" minValueString="2" syncable="YES"/>
         <attribute name="createdAt" attributeType="Date" usesScalarValueType="NO" syncable="YES"/>
         <attribute name="latitude" optional="YES" attributeType="Double" minValueString="-90" maxValueString="90" usesScalarValueType="NO" syncable="YES"/>
-        <attribute name="leftHash" optional="YES" attributeType="String" maxValueString="3" indexed="YES" syncable="YES"/>
+        <attribute name="leftHash" optional="YES" attributeType="String" maxValueString="3" minValueString="3" indexed="YES" syncable="YES"/>
         <attribute name="longitude" optional="YES" attributeType="Double" minValueString="-180" maxValueString="180" usesScalarValueType="NO" syncable="YES"/>
         <attribute name="number" optional="YES" attributeType="String" maxValueString="20" syncable="YES"/>
-        <attribute name="rightHash" optional="YES" attributeType="String" maxValueString="3" indexed="YES" syncable="YES"/>
-        <attribute name="street" optional="YES" attributeType="String" maxValueString="30" syncable="YES"/>
-        <attribute name="topHash" optional="YES" attributeType="String" maxValueString="3" indexed="YES" syncable="YES"/>
+        <attribute name="rightHash" optional="YES" attributeType="String" maxValueString="3" minValueString="3" indexed="YES" syncable="YES"/>
+        <attribute name="street" optional="YES" attributeType="String" maxValueString="30" minValueString="3" syncable="YES"/>
+        <attribute name="topHash" optional="YES" attributeType="String" maxValueString="3" minValueString="3" indexed="YES" syncable="YES"/>
         <attribute name="updatedAt" attributeType="Date" usesScalarValueType="NO" syncable="YES"/>
         <attribute name="uuid" attributeType="String" maxValueString="36" syncable="YES"/>
         <attribute name="zipCode" optional="YES" attributeType="String" maxValueString="100" syncable="YES"/>
