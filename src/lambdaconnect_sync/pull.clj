@@ -4,6 +4,7 @@
             [lambdaconnect-model.core :as mp]
             [lambdaconnect-model.scoping :as scoping]
             [lambdaconnect-sync.utils :as u]
+            [clojure.pprint :refer [pprint]]
             [lambdaconnect-sync.db :as db]))
 
 (defn scoped-object
@@ -39,7 +40,7 @@
                         (let [n (name key)
                               attr (get (:attributes entity) n)
                               rel (get (:relationships entity) n)]
-                          (cond attr (if-let [replacement (get replacements (:name attr))]
+                          (cond attr (if-let [replacement (get replacements (keyword (:name attr)))]
                                        (let [replacement (cond (and (keyword? replacement) (= (namespace replacement) "constant"))                                                                  
                                                                (as-> ((-> replacement name keyword) scoping-constants) rs
                                                                  (do 
@@ -69,31 +70,32 @@
    entities-by-name
    scoping-edn ; as defined in resources/model/pull-scope.edn (or nil for no scoping) additional :constants tag is possible for constants restrictions
    ]
-  (let [scoped-tags (when scoping-edn (scoping/scope config snapshot internal-user entities-by-name scoping-edn false (set (keys (dissoc scoping-edn :constants))))) ; {:NOUser.me #{1 2 3}, :NOMessage.mine #{4 5 6}} (:db/id 's are the values in sets)
+  (let [mapping-fun map ;; map for debug, pmap for production        
+        scoped-tags (when scoping-edn (scoping/scope config snapshot internal-user entities-by-name scoping-edn false (set (keys (dissoc scoping-edn :constants))))) ; {:NOUser.me #{1 2 3}, :NOMessage.mine #{4 5 6}} (:db/id 's are the values in sets)
         scoped-ids   (when scoped-tags (scoping/reduce-entities scoped-tags)) ; {:NOUser #{1 2 3}, :NOMessage #{4 5 6}} (:db/id 's are the values in sets)
         tags-by-ids (when scoped-tags (functor/fmap (fn [tags] (set (map second tags))) ; inverses the map, values are now sets
                                                     (group-by first
                                                               (u/mapcat (fn [[tag ids]] (map (fn [id] [id tag]) ids)) scoped-tags))))
-        objects (pmap (fn [[entity-kw sync-revision]]
-                        (let [entity-name (name entity-kw)
-                              entity (get entities-by-name entity-name)]
-                          (assert entity (str "You are using an outdated version of the app. The DB model does not contain entity: " entity-kw))
-                          (let [entity-scoped-ids (if (nil? scoping-edn)
-                                                    (get scoped-ids (keyword entity-name))
-                                                    (or (get scoped-ids (keyword entity-name)) []))
+        objects (mapping-fun (fn [[entity-kw sync-revision]]
+                               (let [entity-name (name entity-kw)
+                                     entity (get entities-by-name entity-name)]
+                                 (assert entity (str "You are using an outdated version of the app. The DB model does not contain entity: " entity-kw))
+                                 (let [entity-scoped-ids (if (nil? scoping-edn)
+                                                           (get scoped-ids (keyword entity-name))
+                                                           (or (get scoped-ids (keyword entity-name)) []))
                                 modified-ids (db/get-changed-ids config snapshot entity-name sync-revision entities-by-name entity-scoped-ids)]
-                            [entity-name  (db/get-objects-by-ids config entity modified-ids snapshot true)])))
-                      (vec incoming-json))]
+                                   [entity-name  (db/get-objects-by-ids config entity modified-ids snapshot true)])))
+                             (vec incoming-json))]
     (into {} (map (fn [[entity-name objs]]
                     (let [entity (get entities-by-name entity-name)
                                         ; we create all the relationships as empty and later overwrite 
                           proto-object (merge (into {} (map (fn [r] [(mp/datomic-name r) (if (:to-many r) [] nil)]) (vals (:relationships entity))))
                                               {:syncRevision ((:basis-t config) snapshot)}
                                               (into {} (map (fn [a] [(mp/datomic-name a) (:default-value a)]) (filter :default-value (vals (:attributes entity))))))]
-                      [entity-name (pmap #(-> %
-                                              (mp/replace-inverses entity)
-                                              ((partial merge proto-object))
-                                              (scoped-object entities-by-name entity (dissoc scoping-edn :constants) scoped-tags scoped-ids tags-by-ids (:constants scoping-edn))
-                                              (mp/clojure-to-json entity))
-                                         objs)])) objects))))
+                      [entity-name (mapping-fun #(-> %
+                                                     (mp/replace-inverses entity)
+                                                     ((partial merge proto-object))
+                                                     (scoped-object entities-by-name entity (dissoc scoping-edn :constants) scoped-tags scoped-ids tags-by-ids (:constants scoping-edn))
+                                                     (mp/clojure-to-json entity))
+                                                objs)])) objects))))
 

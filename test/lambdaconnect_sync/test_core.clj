@@ -19,11 +19,8 @@
 ;; (in-ns 'clojure.spec.alpha)
 ;; (defn- gensub
 ;;   [spec overrides path rmap form]
-;;   (println "ZZZZ")
 ;;   (prn {:spec spec :over overrides :path path :form form})
-;;   (println "BBB")
 ;;   (when (keyword? spec) (eval `(clojure.repl/doc ~spec)))
-;;   (println "CCC")
 ;;   (let [spec (specize spec)]
 ;;     (if-let [g (c/or (when-let [gfn (c/or (get overrides (c/or (spec-name spec) spec))
 ;;                                           (get overrides path))]
@@ -43,6 +40,7 @@
 
 ;; (in-ns 'lambdaconnect-sync.test-core)
 
+(def Epsilon 0.0001)
 
 (defn speculate [db t]
   (:db-after (d/with db t)))
@@ -164,7 +162,7 @@
       (is (seq (get-in model ["LAGame" :user-info])))
       (is (seq (get-in model ["LAGame" :attributes "gameDescription"]))))))
 
-(deftest ^:test-refresh/focus 
+(deftest
   push-rejected 
   (let [user-uuid (random-uuid)
         ebn (mp/entities-by-name "env/test/test-model.xml")
@@ -188,7 +186,7 @@
     (is (not (empty? rejected-objects)))
     (is (empty? rejected-fields))))
 
-(deftest ^:test-refresh/focus 
+(deftest
   push-accepted 
   (let [user-uuid (random-uuid)
         ebn (mp/entities-by-name "env/test/test-model.xml")
@@ -212,7 +210,7 @@
     (is (empty? rejected-objects))
     (is (empty? rejected-fields))))
 
-(deftest ^:test-refresh/focus 
+(deftest 
   push-accepted-edit-rejected
   (let [user-uuid (random-uuid)
         ebn (mp/entities-by-name "env/test/test-model.xml")
@@ -306,43 +304,45 @@
     (is (empty? rejected-objects))
     (is (empty? rejected-fields))    
     
-
     (testing "Do a pull (fails because constant 'lat' is not defined)"
       (let [snapshot (speculate snapshot tx)]
-        
-        (is (thrown? AssertionError (pull snapshot user-uuid {"LAUser" 0 "LALocation" 0} 
-                                          true {:wow (delay true)
-                                                :are-you-there? false
-                                                :can-create? true
-                                                :whatsupp? true                                
-                                                :some-new-fields ["lala"]})))))
-
+        ;; Lazy nightmare
+        (is (thrown? AssertionError (doseq [x (vals (pull snapshot user-uuid {"LAUser" 0 "LALocation" 0} 
+                                                          true {:wow (delay true)
+                                                                :are-you-there? false
+                                                                :can-create? true
+                                                                :whatsupp? true                                
+                                                                :some-new-fields ["lala"]}))]
+                                      (doall x))))))
+    
     (testing "Do a pull and see what came in - replacements should have arrived"
       (let [snapshot (speculate snapshot tx)
             result (pull snapshot user-uuid {"LAUser" 0 "LALocation" 0} 
-                          true {:wow (delay true)
-                                :are-you-there? false
-                                :can-create? true
-                                :whatsupp? true                                
-                                :lat 82.3
-                                :some-new-fields ["lala"]})]
+                         true {:wow (delay true)
+                               :are-you-there? false
+                               :can-create? true
+                               :whatsupp? true                                
+                               :lat 82.3
+                               :some-new-fields ["lala"]})]
         ;; Replacement with another field
         (is (= "Polska" (-> result 
                             (get "LALocation")
                             (first)
                             (get "city"))))
         ;; Replacement with a constant        
-        (is (= 82.3 (-> result 
-                        (get "LALocation")
-                        (first)
-                        (get "latitude"))))))
-
+        (is (> Epsilon (abs (- 82.3 (-> result 
+                                        (get "LALocation")
+                                        (first)
+                                        (get "latitude"))))))))
+    
     (testing "Try editing succeeds but replaced fields are not actually replaced"
       (let [snapshot (speculate snapshot tx)
             {:keys [tx rejections]} 
-            (push-transaction snapshot user-uuid {"LALocation" [(mp/clojure-to-json (assoc la-location 
-                                                                                       :LALocation/city "Bombaj"
-                                                                                       :LALocation/latitude 85.0) (get ebn "LALocation"))]} 
+            (push-transaction snapshot user-uuid {"LALocation" 
+                                                  [(mp/clojure-to-json (assoc la-location 
+                                                                              :LALocation/city "Bombaj"
+                                                                              :LALocation/latitude 85.0) 
+                                                                       (get ebn "LALocation"))]} 
                               true {:wow (delay true)
                                     :are-you-there? false
                                     :can-create? true
@@ -352,5 +352,4 @@
 
         (is (empty? tx))
         (is (empty? rejected-fields))
-        (is (empty? rejected-objects))))
-))
+        (is (empty? rejected-objects))))))
