@@ -27,7 +27,7 @@
    scoped-tags ; {:NOUser.me #{1 2 3}, :NOMessage.mine #{4 5 6}} (:db/id 's are the values in sets)
    scoped-ids  ; {:NOUser #{1 2 3}, :NOMessage #{4 5 6}} (:db/id 's are the values in sets)
    tags-by-ids ; {1 #{:NOUser.me} 2 #{:NOUser.me} ... }
-   scoping-constants ; {:constant/is-here true :constant-hello (atom false)}
+   scoping-constants ; {:constant/is-here true :constant-hello (delay false)}
    ]
   (assert object "The object cannot be nil")
   (if (nil? scoping-edn) object
