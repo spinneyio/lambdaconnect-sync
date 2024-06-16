@@ -237,7 +237,7 @@
     
     (testing "Try editing fails - wrong protected fields definition"
       (let [snapshot (speculate snapshot tx)]
-        (is (thrown? AssertionError 
+        (is (thrown? AssertionError
                      (push-transaction snapshot user-uuid {"LAUser" [(mp/clojure-to-json la-user (get ebn "LAUser"))]} 
                                        true {:wow (delay true)
                                              :are-you-there? false
@@ -307,13 +307,14 @@
     (testing "Do a pull (fails because constant 'lat' is not defined)"
       (let [snapshot (speculate snapshot tx)]
         ;; Lazy nightmare
-        (is (thrown? AssertionError (doseq [x (vals (pull snapshot user-uuid {"LAUser" 0 "LALocation" 0} 
-                                                          true {:wow (delay true)
-                                                                :are-you-there? false
-                                                                :can-create? true
-                                                                :whatsupp? true                                
-                                                                :some-new-fields ["lala"]}))]
-                                      (doall x))))))
+        (is (thrown? java.util.concurrent.ExecutionException 
+                     (doseq [x (vals (pull snapshot user-uuid {"LAUser" 0 "LALocation" 0} 
+                                           true {:wow (delay true)
+                                                 :are-you-there? false
+                                                 :can-create? true
+                                                 :whatsupp? true                                
+                                                 :some-new-fields ["lala"]}))]
+                       (doall x))))))
     
     (testing "Do a pull and see what came in - replacements should have arrived"
       (let [snapshot (speculate snapshot tx)
