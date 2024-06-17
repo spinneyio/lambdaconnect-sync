@@ -7,7 +7,7 @@ Synchronisation library. <br> <br>
 
 Leiningen coordinates:
 ```clojure
-[io.spinney/lambdaconnect-sync "1.0.17"]
+[io.spinney/lambdaconnect-sync "1.0.19"]
 ```
 
 ## Usage
@@ -28,7 +28,7 @@ Each function requires a config as the first argument:
 
 ## License
 
-Copyright © 2022 Spinney
+Copyright © 2022-2024 Spinney
 
 This program and the accompanying materials are made available under the
 terms of the Eclipse Public License 2.0 which is available at
