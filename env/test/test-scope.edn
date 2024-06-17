@@ -1,0 +1,39 @@
+{:LAUser.me {:constraint [= :internalUserId :user/uuid]
+             :permissions {:modify true
+                           :create :constant/can-create?
+                           :protected-fields ["accessToken" "internalUserId" "email" :constant/some-new-fields]}}
+
+ :LALocation.fromUser {:constraint [contains? :users :LAUser.me]
+                       :permissions {:modify true
+                                     :create false
+                                     :writable-fields ["games"]}}
+
+ :LALocation.allowed-if {:constraint [allowed-if :constant/wow]
+                         :replace-fields {:city :country
+                                          :latitude :constant/lat}
+                         :permissions {:modify true
+                                       :create true
+                                       :writable-fields ["games" "city" "latitude"]}}
+
+
+ :LAGame.organisedByUser {:constraint (or [= :inThePast :constant/are-you-there?]
+                                          [contains? :organiser :LAUser.me])
+                          :permissions {:modify true
+                                        :create false}}
+ :LATicketsSold.byUserEvent {:constraint (and [contains? :location :LALocation.fromUser]
+                                              [contains? :game :LAGame.organisedByUser])
+                             :permissions {:modify true
+                                           :create false}}
+
+ :LATicketsSold.filtered {:constraint (and [contains? :location :LALocation.fromUser]
+                                           [contains? :game :LAGame.organisedByUser]
+                                           [allowed-if :constant/whatsupp?])
+                          :permissions {:modify :constant/mod
+                                        :create false}}
+
+ :LATeam.playedInGame {:constraint [contains? :playedIn :LAGame.organisedByUser]
+                       :permissions {:modify true
+                                     :create false}}
+ :LASyncInfo.system {:constraint :all
+                     :permissions {:modify true
+                                   :create false}}}
