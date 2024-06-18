@@ -118,8 +118,7 @@
    entities-by-name
    snapshot]
 
-  (let [vecfetch (vec objects-to-fetch)
-        existing (into {} (pmap (fn [[entity-name uuids]]
+  (let [existing (into {} (pmap (fn [[entity-name uuids]]
                                   (let [description (get entities-by-name entity-name)]
                                     [entity-name (into {}
                                                        (map (fn [o] [(:app/uuid o) (mp/replace-inverses o description true)])
@@ -129,7 +128,7 @@
                                                              uuids
                                                              snapshot
                                                              true)))]))
-                                vecfetch))
+                                objects-to-fetch))
         created (into {} (pmap (fn [[entity-name uuids]]
                                  (let [existing-uuids (set (keys (get existing entity-name)))
                                        entity (get entities-by-name entity-name)]
@@ -138,7 +137,8 @@
                                                                  {:app/uuid uuid
                                                                   :db/id (.toString uuid)
                                                                   (t/unique-datomic-identifier entity) true}])
-                                                              (filter #(not (existing-uuids %)) uuids)))])) vecfetch))]
+                                                              (filter #(not (existing-uuids %)) uuids)))])) 
+                               objects-to-fetch))]
     [created existing]))
 
 (defn- cas [db-id attrib old-value new-value]
@@ -232,7 +232,7 @@
                   new-object (get rel-objects (:app/uuid new-value))
                   old-referenced-uuid (:app/uuid (inverse-name new-object))
                   ;; TODO: sprawdzić czy na pewno ta zmiana jest ok
-                  old-reference ((:pull config) snapshot '[*] [:app/uuid old-referenced-uuid])
+                  old-reference ((:pull config) snapshot '[:db/id] [:app/uuid old-referenced-uuid])
                   transactions (if (not= (:app/uuid existing-object) (:app/uuid new-object))
                                  (filter identity [(when existing-object
                                                      [:db/retract (:db/id existing-object) inverse-name db-id])
@@ -541,16 +541,20 @@
          [transaction [created-objects updated-objects] _] push-output
          new-db (speculate config snapshot transaction) ; we simulate the transaction to simplify tag discovery and never look at the ugly incoming-json
                                                         ; the following permissions come from the speculated db snapshot (new-db)
-         scoped-tags (future (when scoping-edn (functor/fmap (fn [ids] (set (db/uuids-for-ids config new-db ids))) ; we need uuids not ids this time
-                                                             (scoping/scope config new-db internal-user entities-by-name scoping-edn true)))) ; {:NOUser.me #{#uuid1 #uuid2 #uuid3}, :NOMessage.mine #{#uuid4 #uuid5 #uuid6}} (:app/uuid's are the values in sets)
+         scoped-tags (future ; {:NOUser.me #{#uuid1 #uuid2 #uuid3}, :NOMessage.mine #{#uuid4 #uuid5 #uuid6}} (:app/uuid's are the values in sets)
+                       (when scoping-edn 
+                         (functor/fmap (fn [ids] (set (db/uuids-for-ids config new-db ids))) ; we need uuids not ids this time
+                                       (scoping/scope config new-db internal-user entities-by-name scoping-edn true)))) 
                                         ; the following permissions come from the original db snapshot
-         scoped-tags-snapshot (future (or cached-snapshot-tags (when scoping-edn (functor/fmap (fn [ids] (set (db/uuids-for-ids config snapshot ids))) ; we need uuids not ids this time
-                                                                                               (scoping/scope config snapshot internal-user entities-by-name scoping-edn true))))) ; {:NOUser.me #{#uuid1 #uuid2 #uuid3}, :NOMessage.mine #{#uuid4 #uuid5 #uuid6}} (:app/uuid's are the values in sets)
-
-         tags-by-ids (when @scoped-tags (functor/fmap (fn [tags] (set (map second tags))) ; inverses the map, values are now sets
-                                                      (group-by first
-                                                                (u/mapcat (fn [[tag ids]] (map (fn [id] [id tag]) ids))
-                                                                          (u/join-maps [@scoped-tags @scoped-tags-snapshot])))))]
+         scoped-tags-snapshot (future ; {:NOUser.me #{#uuid1 #uuid2 #uuid3}, :NOMessage.mine #{#uuid4 #uuid5 #uuid6}} (:app/uuid's are the values in sets)
+                                (or cached-snapshot-tags 
+                                    (when scoping-edn 
+                                      (functor/fmap 
+                                       (fn [ids] (set (db/uuids-for-ids config snapshot ids))) ; we need uuids not ids this time
+                                       (scoping/scope config snapshot internal-user entities-by-name scoping-edn true))))) 
+         
+         tags-by-ids (when @scoped-tags 
+                       (scoping/inverse-entities (u/join-maps [@scoped-tags @scoped-tags-snapshot])))]
      (if (not @scoped-tags) [transaction [created-objects updated-objects] {:rejected-objects {}
                                                                             :rejected-fields {}}]
          (let ;scoping starts here
