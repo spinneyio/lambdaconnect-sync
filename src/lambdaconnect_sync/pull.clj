@@ -1,6 +1,7 @@
 (ns lambdaconnect-sync.pull
   (:require [clojure.algo.generic.functor :as functor]
             [lambdaconnect-model.tools :as t]
+            [lambdaconnect-model.utils :refer [update-vals merge]]
             [lambdaconnect-model.core :as mp]
             [lambdaconnect-model.scoping :as scoping]
             [lambdaconnect-sync.utils :as u]
@@ -36,29 +37,30 @@
         (assert (seq tags) (str "We require tags assigned to the object at this stage: " object))
         (assert (not (nil? scoped-ids)))
         (assert (not (nil? tags-by-ids)))
-        (into {} (map (fn [[key value]]
-                        (let [n (name key)
-                              attr (get (:attributes entity) n)
-                              rel (get (:relationships entity) n)]
-                          (cond attr (if-let [replacement (get replacements (keyword (:name attr)))]
-                                       (let [replacement (cond (and (keyword? replacement) (= (namespace replacement) "constant"))                                                                  
-                                                               (as-> ((-> replacement name keyword) scoping-constants) rs
-                                                                 (do 
-                                                                   (assert rs (str "Constant: " replacement " not found in constants map."))
-                                                                   (if (delay? rs) @rs rs)))
-                                                               (keyword? replacement) 
-                                                               (let [r-attr (get (:attributes entity) (name replacement))]
-                                                                 (assert r-attr (str "Wrong replacement rule: " (:name attr) " -> " replacement))
-                                                                 (get object (keyword (:name entity) (:name r-attr))))
-                                                               :default replacement)]
-                                         [key ((t/parser-for-attribute attr) replacement)])
-                                       [key value])
-                                rel (let [scoped-targets (or (get scoped-ids (keyword (:destination-entity rel))) #{})]
-                                     ; (println "\n\nSCOPED TARGETS: " key (:name rel) scoped-targets value)
-                                      (if (:to-many rel)
-                                        [key (filter #(and scoped-targets (-> % :db/id scoped-targets)) value)]
-                                        [key (when (and value (-> (if (map? value) value (first value)) :db/id scoped-targets)) value)]))
-                                :else [key value]))) object)))))
+        (update-vals object 
+                     (fn [key value]
+                       (let [n (name key)
+                             attr (get (:attributes entity) n)
+                             rel (get (:relationships entity) n)]
+                         (cond attr (if-let [replacement (get replacements (keyword (:name attr)))]
+                                      (let [replacement (cond (and (keyword? replacement) (= (namespace replacement) "constant"))                                                                  
+                                                              (as-> ((-> replacement name keyword) scoping-constants) rs
+                                                                (do 
+                                                                  (assert rs (str "Constant: " replacement " not found in constants map."))
+                                                                  (if (delay? rs) @rs rs)))
+                                                              (keyword? replacement) 
+                                                              (let [r-attr (get (:attributes entity) (name replacement))]
+                                                                (assert r-attr (str "Wrong replacement rule: " (:name attr) " -> " replacement))
+                                                                (get object (keyword (:name entity) (:name r-attr))))
+                                                              :default replacement)]
+                                        ((t/parser-for-attribute attr) replacement))
+                                      value)
+                               rel (let [scoped-targets (or (get scoped-ids (keyword (:destination-entity rel))) #{})]
+                                        ; (println "\n\nSCOPED TARGETS: " key (:name rel) scoped-targets value)
+                                     (if (:to-many rel)
+                                       (filter #(and scoped-targets (-> % :db/id scoped-targets)) value)
+                                       (when (and value (-> (if (map? value) value (first value)) :db/id scoped-targets)) value)))
+                               :else value)))))))
 
 ; incoming json: {"FIUser" 123 "FIGame" 344} is a dictionary with entity names as keys
 
@@ -71,11 +73,11 @@
    scoping-edn ; as defined in resources/model/pull-scope.edn (or nil for no scoping) additional :constants tag is possible for constants restrictions
    ]
   (let [mapping-fun pmap ;; map for debug, pmap for production        
-        scoped-tags (when scoping-edn (scoping/scope config snapshot internal-user entities-by-name scoping-edn false (set (keys (dissoc scoping-edn :constants))))) ; {:NOUser.me #{1 2 3}, :NOMessage.mine #{4 5 6}} (:db/id 's are the values in sets)
-        scoped-ids   (when scoped-tags (scoping/reduce-entities scoped-tags)) ; {:NOUser #{1 2 3}, :NOMessage #{4 5 6}} (:db/id 's are the values in sets)
-        tags-by-ids (when scoped-tags (functor/fmap (fn [tags] (set (map second tags))) ; inverses the map, values are now sets
-                                                    (group-by first
-                                                              (u/mapcat (fn [[tag ids]] (map (fn [id] [id tag]) ids)) scoped-tags))))
+        [scoped-tags scoped-ids tags-by-ids] 
+        (when scoping-edn
+          (let [scoped-tags (scoping/scope config snapshot internal-user entities-by-name scoping-edn false (set (keys (dissoc scoping-edn :constants))))]
+            [scoped-tags (scoping/reduce-entities scoped-tags) (scoping/inverse-entities scoped-tags)]))
+        
         objects (mapping-fun (fn [[entity-kw sync-revision]]
                                (let [entity-name (name entity-kw)
                                      entity (get entities-by-name entity-name)]
@@ -83,9 +85,9 @@
                                  (let [entity-scoped-ids (if (nil? scoping-edn)
                                                            (get scoped-ids (keyword entity-name))
                                                            (or (get scoped-ids (keyword entity-name)) []))
-                                modified-ids (db/get-changed-ids config snapshot entity-name sync-revision entities-by-name entity-scoped-ids)]
-                                   [entity-name  (db/get-objects-by-ids config entity modified-ids snapshot true)])))
-                             (vec incoming-json))]
+                                       modified-ids (db/get-changed-ids config snapshot entity-name sync-revision entities-by-name entity-scoped-ids)]
+                                   [entity-name (db/get-objects-by-ids config entity modified-ids snapshot true)])))
+                             incoming-json)]
     (into {} (map (fn [[entity-name objs]]
                     (let [entity (get entities-by-name entity-name)
                                         ; we create all the relationships as empty and later overwrite 
