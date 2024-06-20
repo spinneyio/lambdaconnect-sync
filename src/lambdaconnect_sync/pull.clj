@@ -72,7 +72,11 @@
    entities-by-name
    scoping-edn ; as defined in resources/model/pull-scope.edn (or nil for no scoping) additional :constants tag is possible for constants restrictions
    ]
-  (let [mapping-fun pmap ;; map for debug, pmap for production        
+  (when (:constants scoping-edn) (assert (fn? (:constants scoping-edn))))
+  (let [scoping-edn (if (:constants scoping-edn) 
+                      (update scoping-edn :constants #(% snapshot internal-user))
+                      scoping-edn)
+        mapping-fun pmap ;; map for debug, pmap for production        
         [scoped-tags scoped-ids tags-by-ids] 
         (when scoping-edn
           (let [scoped-tags (scoping/scope config snapshot internal-user entities-by-name scoping-edn false (set (keys (dissoc scoping-edn :constants))))]

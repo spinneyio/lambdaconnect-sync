@@ -176,11 +176,12 @@
                     (assoc :LAUser/playsFor []))
         {:keys [tx rejections]} 
         (push-transaction snapshot user-uuid {"LAUser" [(mp/clojure-to-json la-user (get ebn "LAUser"))]} 
-                          true {:wow (delay true)
-                                 :are-you-there? false
-                                 :can-create? false
-                                 :whatsupp? true
-                                 :some-new-fields []})
+                          true (fn [_snapshot _user] 
+                                 {:wow (delay true)
+                                  :are-you-there? false
+                                  :can-create? false
+                                  :whatsupp? true
+                                  :some-new-fields []}))
         {:keys [rejected-objects rejected-fields]} rejections]
     (is (empty? tx))
     (is (not (empty? rejected-objects)))
@@ -200,11 +201,12 @@
                     (assoc :LAUser/playsFor []))
         {:keys [tx rejections]} 
         (push-transaction snapshot user-uuid {"LAUser" [(mp/clojure-to-json la-user (get ebn "LAUser"))]} 
-                          true {:wow (delay true)
-                                 :are-you-there? false
-                                 :can-create? true
-                                 :whatsupp? true
-                                 :some-new-fields ["lala"]})
+                          true (fn [_snapshot _user] 
+                                 {:wow (delay true)
+                                  :are-you-there? false
+                                  :can-create? true
+                                  :whatsupp? true
+                                  :some-new-fields ["lala"]}))
         {:keys [rejected-objects rejected-fields]} rejections]
     (is (not (empty? tx)))
     (is (empty? rejected-objects))
@@ -225,11 +227,12 @@
         {:keys [tx rejections]} 
         (testing "Even though the protected fields ('some-new-firelds') are nonsense, they are not being checked here since we do not use them when first creating an object"
           (push-transaction snapshot user-uuid {"LAUser" [(mp/clojure-to-json la-user (get ebn "LAUser"))]} 
-                            true {:wow (delay true)
-                                  :are-you-there? false
-                                  :can-create? true
-                                  :whatsupp? true
-                                  :some-new-fields ["lala"]}))
+                            true (fn [_snapshot _user] 
+                                   {:wow (delay true)
+                                    :are-you-there? false
+                                    :can-create? true
+                                    :whatsupp? true
+                                    :some-new-fields ["lala"]})))
         {:keys [rejected-objects rejected-fields]} rejections]
     (is (not (empty? tx)))
     (is (empty? rejected-objects))
@@ -239,21 +242,23 @@
       (let [snapshot (speculate snapshot tx)]
         (is (thrown? AssertionError
                      (push-transaction snapshot user-uuid {"LAUser" [(mp/clojure-to-json la-user (get ebn "LAUser"))]} 
-                                       true {:wow (delay true)
-                                             :are-you-there? false
-                                             :can-create? true
-                                             :whatsupp? true
-                                             :some-new-fields ["lala"]})))))
+                                       true (fn [_snapshot _user] 
+                                              {:wow (delay true)
+                                               :are-you-there? false
+                                               :can-create? true
+                                               :whatsupp? true
+                                               :some-new-fields ["lala"]}))))))
 
     (testing "Try editing succeeds but with rejections and empty transaction"
       (let [snapshot (speculate snapshot tx)
             {:keys [tx rejections]} 
             (push-transaction snapshot user-uuid {"LAUser" [(mp/clojure-to-json (assoc la-user :LAUser/firstName "Zorro") (get ebn "LAUser"))]} 
-                                       true {:wow (delay true)
-                                             :are-you-there? false
-                                             :can-create? true
-                                             :whatsupp? true
-                                             :some-new-fields ["firstName"]})
+                                       true (fn [_snapshot _user] 
+                                              {:wow (delay true)
+                                               :are-you-there? false
+                                               :can-create? true
+                                               :whatsupp? true
+                                               :some-new-fields ["firstName"]}))
             {:keys [rejected-objects rejected-fields]} rejections]
 
         (is (= "firstName" (-> rejected-fields
@@ -294,11 +299,12 @@
         {:keys [tx rejections]} 
         (testing "Even though the protected fields ('some-new-fields') are nonsense, they are not being checked here since we do not use them when first creating an object"
           (push-transaction snapshot user-uuid json
-                            true {:wow (delay true)
-                                  :are-you-there? false
-                                  :can-create? true
-                                  :whatsupp? true
-                                  :some-new-fields ["lala"]}))
+                            true (fn [_snapshot _user] 
+                                   {:wow (delay true)
+                                    :are-you-there? false
+                                    :can-create? true
+                                    :whatsupp? true
+                                    :some-new-fields ["lala"]})))
         {:keys [rejected-objects rejected-fields]} rejections]
     (is (not (empty? tx)))
     (is (empty? rejected-objects))
@@ -309,22 +315,24 @@
         ;; Lazy nightmare
         (is (thrown? java.util.concurrent.ExecutionException 
                      (doseq [x (vals (pull snapshot user-uuid {"LAUser" 0 "LALocation" 0} 
-                                           true {:wow (delay true)
-                                                 :are-you-there? false
-                                                 :can-create? true
-                                                 :whatsupp? true                                
-                                                 :some-new-fields ["lala"]}))]
+                                           true (fn [_snapshot _user] 
+                                                  {:wow (delay true)
+                                                   :are-you-there? false
+                                                   :can-create? true
+                                                   :whatsupp? true                                
+                                                   :some-new-fields ["lala"]})))]
                        (doall x))))))
     
     (testing "Do a pull and see what came in - replacements should have arrived"
       (let [snapshot (speculate snapshot tx)
             result (pull snapshot user-uuid {"LAUser" 0 "LALocation" 0} 
-                         true {:wow (delay true)
-                               :are-you-there? false
-                               :can-create? true
-                               :whatsupp? true                                
-                               :lat 82.3
-                               :some-new-fields ["lala"]})]
+                         true (fn [_snapshot _user]
+                                {:wow (delay true)
+                                 :are-you-there? false
+                                 :can-create? true
+                                 :whatsupp? true                                
+                                 :lat 82.3
+                                 :some-new-fields ["lala"]}))]
         ;; Replacement with another field
         (is (= "Polska" (-> result 
                             (get "LALocation")
@@ -344,11 +352,12 @@
                                                                               :LALocation/city "Bombaj"
                                                                               :LALocation/latitude 85.0) 
                                                                        (get ebn "LALocation"))]} 
-                              true {:wow (delay true)
-                                    :are-you-there? false
-                                    :can-create? true
-                                    :whatsupp? true
-                                    :some-new-fields ["firstName"]})
+                              true (fn [_snapshot _user] 
+                                     {:wow (delay true)
+                                      :are-you-there? false
+                                      :can-create? true
+                                      :whatsupp? true
+                                      :some-new-fields ["firstName"]}))
             {:keys [rejected-objects rejected-fields]} rejections]
 
         (is (empty? tx))

@@ -536,15 +536,25 @@
                      (internal-push-transaction config incoming-json internal-user snapshot entities-by-name (fn [i _ _ _] [i {}]))
                      {:rejected-objects {} :rejected-fields {}} nil))
 
-  ([config incoming-json internal-user snapshot entities-by-name scoping-edn push-output rejections cached-snapshot-tags]
+  ([config incoming-json internal-user snapshot entities-by-name original-scoping-edn push-output rejections cached-snapshot-tags]
+   (when (:constants original-scoping-edn) (assert (fn? (:constants original-scoping-edn))))
    (let [entity (get entities-by-name (first (keys incoming-json)))
          [transaction [created-objects updated-objects] _] push-output
          new-db (speculate config snapshot transaction) ; we simulate the transaction to simplify tag discovery and never look at the ugly incoming-json
                                                         ; the following permissions come from the speculated db snapshot (new-db)
+
+         scoping-edn (if (:constants original-scoping-edn)
+                       (update original-scoping-edn :constants #(% snapshot internal-user))
+                       original-scoping-edn)
+
+         new-scoping-edn (if (:constants original-scoping-edn)
+                           (update original-scoping-edn :constants #(% new-db internal-user))
+                           original-scoping-edn)
+
          scoped-tags (future ; {:NOUser.me #{#uuid1 #uuid2 #uuid3}, :NOMessage.mine #{#uuid4 #uuid5 #uuid6}} (:app/uuid's are the values in sets)
                        (when scoping-edn 
                          (functor/fmap (fn [ids] (set (db/uuids-for-ids config new-db ids))) ; we need uuids not ids this time
-                                       (scoping/scope config new-db internal-user entities-by-name scoping-edn true)))) 
+                                       (scoping/scope config new-db internal-user entities-by-name new-scoping-edn true)))) 
                                         ; the following permissions come from the original db snapshot
          scoped-tags-snapshot (future ; {:NOUser.me #{#uuid1 #uuid2 #uuid3}, :NOMessage.mine #{#uuid4 #uuid5 #uuid6}} (:app/uuid's are the values in sets)
                                 (or cached-snapshot-tags 
@@ -561,6 +571,7 @@
           [_ ((:log config) (str "----> ORIGINAL TRANSACTION: " (vec transaction)))
            _ ((:log config) (str "---------------------------------------------"))
            _ ((:log config) (str "TAGS: " tags-by-ids))
+
 
            constants (:constants scoping-edn)
            constant-value #(if (and (keyword? %)
@@ -793,7 +804,8 @@
                ;; we have removed all that was needed in the former steps
                [transaction [filtered-created-objects filtered-updated-objects] rejections])
 
-             (recur config incoming-json internal-user snapshot entities-by-name scoping-edn [transaction-after-field-rejections [created-objects updated-objects] {}]
+             (recur config incoming-json internal-user snapshot entities-by-name original-scoping-edn 
+                    [transaction-after-field-rejections [created-objects updated-objects] {}]
                     {:rejected-objects (merge-with union rejected-object-info (:rejected-objects rejections))
                      :rejected-fields (merge-with #(merge-with union %1 %2) field-rejections (:rejected-fields rejections))}
                     @scoped-tags-snapshot)))))))
