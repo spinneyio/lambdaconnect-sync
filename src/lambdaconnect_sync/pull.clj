@@ -43,16 +43,18 @@
                              attr (get (:attributes entity) n)
                              rel (get (:relationships entity) n)]
                          (cond attr (if-let [replacement (get replacements (keyword (:name attr)))]
-                                      (let [replacement (cond (and (keyword? replacement) (= (namespace replacement) "constant"))                                                                  
-                                                              (as-> ((-> replacement name keyword) scoping-constants) rs
-                                                                (do 
-                                                                  (assert rs (str "Constant: " replacement " not found in constants map."))
-                                                                  (if (delay? rs) @rs rs)))
-                                                              (keyword? replacement) 
-                                                              (let [r-attr (get (:attributes entity) (name replacement))]
-                                                                (assert r-attr (str "Wrong replacement rule: " (:name attr) " -> " replacement))
-                                                                (get object (keyword (:name entity) (:name r-attr))))
-                                                              :default replacement)]
+                                      (let [replacement-fn (fn replacement-fn [replacement]
+                                                             (cond (and (keyword? replacement) (= (namespace replacement) "constant"))                                                                  
+                                                                   (as-> ((-> replacement name keyword) scoping-constants) rs
+                                                                     (do 
+                                                                       (assert rs (str "Constant: " replacement " not found in constants map."))
+                                                                       (replacement-fn (if (delay? rs) @rs rs))))
+                                                                   (keyword? replacement) 
+                                                                   (let [r-attr (get (:attributes entity) (name replacement))]
+                                                                     (assert r-attr (str "Wrong replacement rule: " (:name attr) " -> " replacement))
+                                                                     (get object (keyword (:name entity) (:name r-attr))))
+                                                                   :default replacement))
+                                            replacement (replacement-fn replacement)]
                                         ((t/parser-for-attribute attr) replacement))
                                       value)
                                rel (let [scoped-targets (or (get scoped-ids (keyword (:destination-entity rel))) #{})]

@@ -319,7 +319,7 @@
                                                   {:wow (delay true)
                                                    :are-you-there? false
                                                    :can-create? true
-                                                   :whatsupp? true                                
+                                                   :whatsupp? true                                                                                  
                                                    :some-new-fields ["lala"]})))]
                        (doall x))))))
     
@@ -356,6 +356,7 @@
                                      {:wow (delay true)
                                       :are-you-there? false
                                       :can-create? true
+                                      :lat 82.3
                                       :whatsupp? true
                                       :some-new-fields ["firstName"]}))
             {:keys [rejected-objects rejected-fields]} rejections]
