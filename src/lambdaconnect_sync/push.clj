@@ -605,7 +605,9 @@
                                                           replacements (map #(some->> %
                                                                                       (get scoping-edn)
                                                                                       (:replace-fields)
-                                                                                      (keys)
+                                                                                      ;; We ignore replacements that eventually replace fields with contents of themselves (e.g. {:field-name :field-name})
+                                                                                      (filter (fn [[k v]] (not= k (constant-value v))))
+                                                                                      (map first)
                                                                                       (map name)
                                                                                       (set)) tags)]
                                                       (assert (or (<= (count replacements) 1)
