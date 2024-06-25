@@ -1,5 +1,6 @@
 (ns lambdaconnect-sync.hooks
   (:require [clojure.string :as string]
+            [lambdaconnect-sync.db :as db]
             [clojure.set :as set]))
 
 (defn get-datomic-relationships [config snapshot]
@@ -129,12 +130,16 @@
                   entry)]
       (assoc entry 1 (get id-to-correct-id id id)))
     (#{:db/cas :db.fn/cas} (first entry))
-    (let [[op id attr old-val val] entry]
-      (if (contains? datomic-relationships attr)
-        (let [correct-old-val (get id-to-correct-id old-val old-val)
-              correct-val (get id-to-correct-id val val)]
-          [op id attr correct-old-val correct-val])
-        entry))
+    (let [[op id attr old-val val] entry
+          modified-entry (if (contains? datomic-relationships attr)
+                           (let [correct-old-val (get id-to-correct-id old-val old-val)
+                                 correct-val (get id-to-correct-id val val)]
+                             [op (get id-to-correct-id id id) attr correct-old-val correct-val])
+                           (assoc entry 1 (get id-to-correct-id id id)))]
+      (if (string? (get id-to-correct-id id id))
+        ;; If the object did not exist before (a string as an ID) we need to swap cas with add
+        [:db/add (get id-to-correct-id id id) attr (get id-to-correct-id val val)]
+        modified-entry))
     
     (transactor-function? get-ids-from-entry datomic-relationships entry)
     
@@ -214,3 +219,41 @@
       (let [update-entry (partial update-colliding-entry colliding-ids-attrs)
             updated-push-transaction (keep update-entry push-transaction)]
         (concat hooks-transaction updated-push-transaction)))))
+
+(defn send-specific-hooks!
+  "This function takes a map of {\"entity-name\" {uuid1 obj1 uuid2 obj2 uuid3 obj3]} 
+  
+  It uses the snapshot to re-fetch all the objects using just their uuids (the obj1 obj2 obj3 etc. are ignored).
+  Snapshot would most likely be a speculated db (after applying push transaction).  
+  
+  It then calls the hook-fun for each object, expecting it to return transaction pairs (message-queue and main db).
+  This way the creation/update of push objects can have some db-related side effects.
+
+  The hook functions are instructed of the current state of the speculated db (snapshot), state of the db before speculation (before-snapshot),
+  object to consider, user that has triggered the push and finally some shared state that can be used to track advanced changes between calls (necessarily an atom!).
+
+  Finally, if the finaliser function is provided, it is called with final transactions and shared state and provides its own transaction/mq-transaction pair state.
+  
+  At the very end, a transaction or a map {:transaction mq-transaction} is being returned."
+  ([config before-snapshot snapshot interesting-objects entities-by-name user hook-fun] 
+   (send-specific-hooks! config before-snapshot snapshot interesting-objects entities-by-name user hook-fun (atom {}) {:transaction [] :mq-transaction []} nil))
+
+  ([config before-snapshot snapshot interesting-objects entities-by-name user hook-fun common-state] 
+   (send-specific-hooks! config before-snapshot snapshot interesting-objects entities-by-name user hook-fun common-state {:transaction [] :mq-transaction []} nil))
+
+  ([config before-snapshot snapshot interesting-objects entities-by-name user hook-fun common-state previous-results finaliser-fun]
+   (let [shared-state (or common-state (atom {}))
+         result (reduce #(merge-with concat %1 %2) 
+                        {:transaction [] :mq-transaction []} 
+                        (map (fn [[entity-name object-dict]]
+                               (let [entity (get entities-by-name entity-name)
+                                     objects (db/get-objects-by-uuids config entity (or (keys object-dict) []) snapshot)]
+                                 (reduce #(merge-with concat %1 %2) 
+                                         {:transaction [] :mq-transaction []} 
+                                         (pmap (fn [object]
+                                                 (let [result (hook-fun user object entity snapshot before-snapshot shared-state)]
+                                                   (if (map? result) result {:transaction result :mq-transaction []}))) objects)))) 
+                             (vec interesting-objects)))
+         result (merge-with concat previous-results result)
+         result (if finaliser-fun (finaliser-fun user result snapshot before-snapshot shared-state) result)]
+     result)))

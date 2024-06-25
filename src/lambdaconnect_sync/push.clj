@@ -416,42 +416,6 @@
            ((:log config) error-string)
            (throw (ex-info (str "You are going to create object refering to non existing entity. \n" (dissoc error-info :input-after-scope)) error-info))))))))
 
-(defn send-specific-hooks!
-  "Creates a transaction or a map {:transaction mq-transaction}"
-  [config before-snapshot snapshot interesting-objects entities-by-name user hook-fun]
-  (let [result (reduce #(merge-with concat %1 %2) 
-                       {:transaction [] :mq-transaction []} 
-                       (map (fn [[entity-name object-dict]]
-                              (let [entity (get entities-by-name entity-name)
-                                    objects (db/get-objects-by-uuids config entity (or (keys object-dict) []) snapshot)]
-                                (reduce #(merge-with concat %1 %2) 
-                                        {:transaction [] :mq-transaction []} 
-                                        (pmap (fn [object]
-                                                (let [result (hook-fun user object entity snapshot before-snapshot)]
-                                                  (if (map? result) result {:transaction result :mq-transaction []}))) objects)))) (vec interesting-objects)))]
-    (if (seq (:mq-transaction result))
-      result
-      (:transaction result))))
-
-(defn send-specific-update-hooks!
-  "Creates a transaction or a map {:transaction mq-transaction}"
-  [config before-snapshot snapshot interesting-objects entities-by-name user hook-fun]
-  (let [result (reduce #(merge-with concat %1 %2) 
-                       {:transaction [] :mq-transaction []} 
-                       (map (fn [[entity-name object-dict]]
-                              (let [entity (get entities-by-name entity-name)
-                                    objects (db/get-objects-by-uuids config entity (or (keys object-dict) []) snapshot)]
-                                (reduce #(merge-with concat %1 %2) 
-                                        {:transaction [] :mq-transaction []} 
-                                        (pmap (fn [object]
-                                                (let [result (hook-fun user object entity snapshot before-snapshot)]
-                                                  (if (map? result) result {:transaction result :mq-transaction []}))) objects)))) (vec interesting-objects)))]
-    (if (seq (:mq-transaction result))
-      result
-      (:transaction result))))
-
-
-
 ; -------------------- scope push helpers ----------------------
 
 (defn update-boolean-permissions [l r] (or l r))
