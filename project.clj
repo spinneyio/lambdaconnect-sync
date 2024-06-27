@@ -1,4 +1,4 @@
-(defproject io.spinney/lambdaconnect-sync "1.0.23"
+(defproject io.spinney/lambdaconnect-sync "1.0.24"
   :description "Synchronisation library"
   :url "https://github.com/spinneyio/lambdaconnect-sync"
   :license {:name "EPL-2.0 OR GPL-2.0-or-later WITH Classpath-exception-2.0"

@@ -53,10 +53,9 @@
                                                                    (let [r-attr (get (:attributes entity) (name replacement))]
                                                                      (assert r-attr (str "Wrong replacement rule: " (:name attr) " -> " replacement))
                                                                      (get object (keyword (:name entity) (:name r-attr))))
-                                                                   :default replacement))
-                                            replacement-v (replacement-fn replacement)]
-                                        (when-not (nil? replacement-v)
-                                          ((t/parser-for-attribute attr) replacement-v)))
+                                                                   :default (when-not (nil? replacement)
+                                                                              ((t/parser-for-attribute attr) replacement))))]
+                                        (replacement-fn replacement))
                                       value)
                                rel (let [scoped-targets (or (get scoped-ids (keyword (:destination-entity rel))) #{})]
                                         ; (println "\n\nSCOPED TARGETS: " key (:name rel) scoped-targets value)
