@@ -418,41 +418,42 @@
 
 ; -------------------- scope push helpers ----------------------
 
-(defn update-boolean-permissions [l r] (or l r))
+(spec/def ::writable-fields (spec/coll-of string?))
+(spec/def ::protected-fields (spec/coll-of string?))
+(spec/def ::modify boolean?)
+(spec/def ::create boolean?)
 
-(defn update-writable-fields [l-m r-m l r]
-  (cond
-    (and (seq l) (seq r)) (vec (set (concat l r)))
-    (not= l-m r-m) (vec (set (concat l r)))
-    :else []))
+(spec/def ::permission (spec/keys :req-un [::modify ::create] :opt-un [::writable-fields ::protected-fields]))
 
-(defn update-protected-fields [l-m r-m l r]
-  (cond
-    ; de Morgan's law:
-    (and (seq l) (seq r)) (vec (intersection (into #{} l) (into #{} r)))
-    (not= l-m r-m) (vec (set (concat l r)))
-    :else []))
-
-(defn- merge-fields [perms entity]
-  (let [{w-f :writable-fields p-f :protected-fields} perms
-        all-fields (into #{} (concat (keys (:attributes entity)) (keys (:relationships entity))))
-        all-fields-except-protected (difference all-fields (into #{} p-f))
-        writable-fields (vec (set (concat all-fields-except-protected w-f)))]
-    (if (and w-f p-f)
-      (-> perms
-          (dissoc :protected-fields)
-          (assoc :writable-fields writable-fields))
-      perms)))
-
-(defn- merge-permissions [permissions]
-  (reduce (fn [perms {c :create m :modify w :writable-fields p :protected-fields}]
-            (let [p-m (:modify perms)]
-              (-> perms
-                  (update :create (partial update-boolean-permissions c))
-                  (update :modify (partial update-boolean-permissions m))
-                  (update :writable-fields (partial update-writable-fields p-m m w))
-                  (update :protected-fields (partial update-protected-fields p-m m p))))) (first permissions) permissions))
-
+(defn- merge-permissions [permissions entity]
+  {:pre [(spec/valid? (spec/coll-of ::permission) permissions) (spec/valid? :lambdaconnect-model.data-xml/entity entity)]
+   :post [(spec/valid? ::permission %)]}
+  (let [all-fields (into #{} (concat (keys (:attributes entity)) (keys (:relationships entity))))
+        ;; Simplified permissions always have writable-fields only.
+        simplified-permissions (map (fn [{:keys [writable-fields protected-fields modify] 
+                                          :as permission}]
+                                      (when writable-fields
+                                        (assert (subset? (set writable-fields) all-fields)
+                                                (str (set writable-fields) " is not a subset of " all-fields)))
+                                      (when protected-fields
+                                        (assert (subset? (set protected-fields) all-fields)
+                                                (str (set protected-fields) " is not a subset of " all-fields)))
+                                      (-> permission
+                                          (select-keys [:create :modify])
+                                          (assoc :writable-fields 
+                                                 (cond 
+                                                   (not modify) #{}
+                                                   (or writable-fields protected-fields)
+                                                   (difference (set (or writable-fields all-fields))
+                                                               (set (or protected-fields #{})))
+                                                   :default all-fields)))) permissions)]
+    (if (seq simplified-permissions)
+      {:modify (reduce #(or %1 %2) (map :modify simplified-permissions))
+       :create (reduce #(or %1 %2) (map :create simplified-permissions))
+       :writable-fields (apply union (map :writable-fields simplified-permissions))}
+      {:modify false
+       :create false})))
+  
 (defn combined-permissions-for-object
   "Given a sequence of permissions of the form 
   {:create ^Bool 
@@ -470,19 +471,12 @@
   If someone has write permissions to something it trumps all the lesser permissions."
 
   [permissions entity]
-  (let [merged-permissions (merge-permissions permissions)
-        merged-permissions (into {} (filter (fn [[k v]] (or (boolean? v) (seq v))) merged-permissions))
-        final-permissions (-> merged-permissions
-                              (#(merge-fields % entity))
-                              (#(if (:writable-fields %) (update % :writable-fields set) %))
-                              (#(if (:protected-fields %) (update % :protected-fields set) %)))]
+  (let [final-permissions (merge-permissions permissions entity)]
     ;; updatedAt is a special field that should always be allowed to be modified whenever any modification is possible
     (if (:modify final-permissions)
       (-> final-permissions 
-          (#(if (:writable-fields %) (update % :writable-fields (fn [w] (conj w "updatedAt"))) %))
-          (#(if (:protected-fields %) (update % :protected-fields (fn [w] (disj w "updatedAt"))) %)))
+          (#(if (seq (:writable-fields %)) (update % :writable-fields (fn [w] (conj w "updatedAt"))) %)))
       final-permissions)))
-
 
 ; -------------------- new scoped push -------------------------
 
@@ -534,7 +528,7 @@
          (let ;scoping starts here
           [_ ((:log config) (str "----> ORIGINAL TRANSACTION: " (vec transaction)))
            _ ((:log config) (str "---------------------------------------------"))
-           _ ((:log config) (str "TAGS: " tags-by-ids))
+           _ ((:log config) (str "ALL TAGS: " tags-by-ids))
 
 
            constants (:constants scoping-edn)
@@ -558,11 +552,17 @@
           
            permissions-for-object (memoize (fn [uuid] ; a helper that takes an uuid and returns the merged permissions map (an object can belong to multiple tags)
                                              (let [tags (get tags-by-ids uuid)
+                                                   _ ((:log config) (str "PERMISSIONS TAGS for UUID: " uuid " - " tags))
                                                    permissions (map #(->> % 
                                                                           (get scoping-edn)
                                                                           (:permissions)                                                                  
-                                                                          (process-constants-for-permissions)) tags)]
-                                               (combined-permissions-for-object permissions entity))))
+                                                                          (process-constants-for-permissions)) tags)
+                                                   entity (when (seq tags) (get entities-by-name (last (re-find #"(.*)\..+" (name (first tags))))))
+                                                   result (if entity (combined-permissions-for-object permissions entity)
+                                                              {:create false :modify false :writable-fields []})]
+                                               ((:log config) (str "PERMISSIONS to process: " uuid " - " (vec permissions)))
+                                               ((:log config) (str "PERMISSIONS result: " uuid " - " (vec result)))
+                                               result)))
 
            field-replacements-for-object (memoize (fn [uuid] ; a helper that takes an uuid and returns the merged replacements map (an object can belong to multiple tags)
                                                     (let [tags (get tags-by-ids uuid)
@@ -615,6 +615,7 @@
 
            rejected-objects (functor/fmap #(filter (fn [o] (let [permissions (or (permissions-for-object (:app/uuid o)) {})
                                                                  {:keys [modify create] :or {modify false create false}} permissions]
+                                                             ((:log config) (str "REJECTING? " (:app/uuid o)  permissions))
                                                              (cond (created-uuids (:app/uuid o)) (not create)
                                                                    (updated-uuids (:app/uuid o)) (not modify)
                                                                    :else (assert false (str "Logic error - object not found" o))))) %) 
@@ -622,7 +623,7 @@
 
 
            rejected-id-candidates (functor/fmap #(set (map :db/id %)) rejected-objects)
-              ;; _ ((:log config) "Rejected candidates: " rejected-id-candidates)
+           _ ((:log config) "Reject candidates: " rejected-id-candidates)
 
            [transaction-after-object-rejections true-rejection-ids rejected-statements-by-id] 
            (let [rejected-ids (apply union (vals rejected-id-candidates))
@@ -662,6 +663,8 @@
                                            (and modify (or protected-fields writable-fields (seq field-replacements))))) %)
                                      (functor/fmap #(if (empty? %) [] (vals %)) updated-objects))
 
+           _ ((:log config) "Objects to reject fields: " objects-to-filter-fields)
+
            excise-field-from-transaction (fn [entity object-id transaction field-name]  ; object-id is assumed to be internal db 
                                            ;; Returns transaction with operations modifying a field against permissions excised.
                                            ;; Gets fired if we are certain the excision should happen
@@ -683,13 +686,17 @@
                                                                                                           (and (not datomic-relationship) ; the inverse 
                                                                                                                (or (= old-target object-id)
                                                                                                                    (= new-target object-id)))))))
-                                                                 check-entry (if attribute check-attribute-entry check-relationship-entry)]
-                                                             (case op
-                                                               :db/add (let [[_ id datomic-field target] entry] (check-entry op id datomic-field nil target))
-                                                               :db/retract (let [[_ id datomic-field target] entry] (check-entry op id datomic-field nil target))
-                                                               :db/cas (let [[_ id datomic-field old-target new-target] entry] (check-entry op id datomic-field old-target new-target))
-                                                               :db.fn/cas (let [[_ id datomic-field old-target new-target] entry] (check-entry op id datomic-field old-target new-target))
-                                                               true)))) transaction)))
+                                                                 check-entry (if attribute check-attribute-entry check-relationship-entry)
+                                                                 result (case op
+                                                                          :db/add (let [[_ id datomic-field target] entry] (check-entry op id datomic-field nil target))
+                                                                          :db/retract (let [[_ id datomic-field target] entry] (check-entry op id datomic-field nil target))
+                                                                          :db/cas (let [[_ id datomic-field old-target new-target] entry] (check-entry op id datomic-field old-target new-target))
+                                                                          :db.fn/cas (let [[_ id datomic-field old-target new-target] entry] (check-entry op id datomic-field old-target new-target))
+                                                                          true)]
+                                                             (when (not result) 
+                                                               ((:log config) (str "!!! Excising field: " field-name " - " object-id " entry: " entry)))
+                                                             result
+                                                             ))) transaction)))
 
            [transaction-after-field-rejections field-rejections] 
            (letfn [(reject-fields [t entity object remaining-fields rejections field-replacements excised-anything?]
@@ -700,6 +707,12 @@
                                            ;; We can add additional logic here to not report rejections of fields that happened when 
                                            ;; modifying scoped relations. 
                                            (not (field-replacements field)))]
+                         (when (and (not= (count t) (count new-transaction))
+                                           ;; We create a rejection if something was excised and it was not a field that has been replaced
+                                           ;; We can add additional logic here to not report rejections of fields that happened when 
+                                           ;; modifying scoped relations. 
+                                           (field-replacements field))
+                           ((:log config) (str "Silently removed replacement: " t " - " new-transaction " - " field " - " field-replacements)))
                          (recur new-transaction
                                 entity
                                 object
@@ -712,18 +725,23 @@
                                   rejections)
                                 field-replacements
                                 (or excised? excised-anything?)))
-                       [t rejections excised-anything?]))
+                       (do
+                        (when excised-anything? 
+                          ((:log config) (str "Excised something: " object " - " (doall t) " - " rejections)))
+                       [t rejections excised-anything?])))
                    
                    (reject-objects [tx entity remaining-objects rejections]
                      (if-let [object (first remaining-objects)]
                        (let [permissions (or (permissions-for-object (:app/uuid object)) {})
                              field-replacements (or (field-replacements-for-object (:app/uuid object)) #{})
+                             _ ((:log config) (str "Looking at rejecting from: " (:app/uuid object) " permissions: - " permissions " - " field-replacements))
                              {:keys [protected-fields writable-fields] :or {protected-fields #{} writable-fields #{}}} permissions
                              fields-to-remove (vec (union field-replacements
-                                                          (if (seq protected-fields) protected-fields
+                                                          (if (seq protected-fields) protected-fields                                                            
                                                               (difference
                                                                (set (concat (keys (:attributes entity)) (keys (:relationships entity))))
                                                                writable-fields))))
+                             _ ((:log config) (str "Fields to remove: " (doall fields-to-remove)))
                              [new-transaction new-rejections excised-anything?] 
                              (reject-fields tx entity object fields-to-remove rejections field-replacements false)]
                          (recur new-transaction
@@ -755,7 +773,7 @@
                                                                    (= :app/updatedAt (nth (first v) 2)))))
                                           (keys)
                                           (set))
-
+                   _ ((:log config) (str "REMOVING updatedAt only: " objects-to-excise))
                    transaction (filter #(not (seq (clojure.set/intersection objects-to-excise (objects-from-entry %)))) transaction)
 
                    ids-in-transaction (apply union (map objects-from-entry transaction))
@@ -769,9 +787,11 @@
                ((:log config) "=======================================")
                ;; we have removed all that was needed in the former steps
                [transaction [filtered-created-objects filtered-updated-objects] rejections])
-
-             (recur config incoming-json internal-user snapshot entities-by-name original-scoping-edn 
-                    [transaction-after-field-rejections [created-objects updated-objects] {}]
-                    {:rejected-objects (merge-with union rejected-object-info (:rejected-objects rejections))
-                     :rejected-fields (merge-with #(merge-with union %1 %2) field-rejections (:rejected-fields rejections))}
-                    @scoped-tags-snapshot)))))))
+             (do 
+               ((:log config) "Recurring because not all rejections have been complete.")
+               ((:log config) "Rejections: " rejections)
+               (recur config incoming-json internal-user snapshot entities-by-name original-scoping-edn 
+                      [transaction-after-field-rejections [created-objects updated-objects] {}]
+                      {:rejected-objects (merge-with union rejected-object-info (:rejected-objects rejections))
+                       :rejected-fields (merge-with #(merge-with union %1 %2) field-rejections (:rejected-fields rejections))}
+                      @scoped-tags-snapshot))))))))
