@@ -225,7 +225,7 @@
                     (assoc :LAUser/organisedGames [])
                     (assoc :LAUser/playsFor []))
         {:keys [tx rejections]} 
-        (testing "Createng the object"
+        (testing "Creating the object"
           (push-transaction snapshot user-uuid {"LAUser" [(mp/clojure-to-json la-user (get ebn "LAUser"))]} 
                             true (fn [_snapshot _user] 
                                    {:wow (delay true)
