@@ -442,7 +442,12 @@
                                           (select-keys [:create :modify])
                                           (assoc :writable-fields 
                                                  (cond 
-                                                   (not modify) #{}
+                                                   (not modify) (do 
+                                                                  (when-not (nil? writable-fields)
+                                                                    (println "Warning - writable fields is not nil even though modify is false: " writable-fields))
+                                                                  (when-not (nil? protected-fields)
+                                                                    (println "Warning - protected fields is not nil even though modify is false: " protected-fields))
+                                                                  #{})
                                                    (or writable-fields protected-fields)
                                                    (difference (set (or writable-fields all-fields))
                                                                (set (or protected-fields #{})))
@@ -471,6 +476,7 @@
   If someone has write permissions to something it trumps all the lesser permissions."
 
   [permissions entity]
+  (spec/assert (spec/coll-of ::permission) permissions)
   (let [final-permissions (merge-permissions permissions entity)]
     ;; updatedAt is a special field that should always be allowed to be modified whenever any modification is possible
     (if (:modify final-permissions)
