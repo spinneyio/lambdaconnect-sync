@@ -206,7 +206,7 @@
                                   :are-you-there? false
                                   :can-create? true
                                   :whatsupp? true
-                                  :some-new-fields ["lala"]}))
+                                  :some-new-fields ["firstName"]}))
         {:keys [rejected-objects rejected-fields]} rejections]
     (is (not (empty? tx)))
     (is (empty? rejected-objects))
@@ -225,14 +225,14 @@
                     (assoc :LAUser/organisedGames [])
                     (assoc :LAUser/playsFor []))
         {:keys [tx rejections]} 
-        (testing "Even though the protected fields ('some-new-firelds') are nonsense, they are not being checked here since we do not use them when first creating an object"
+        (testing "Createng the object"
           (push-transaction snapshot user-uuid {"LAUser" [(mp/clojure-to-json la-user (get ebn "LAUser"))]} 
                             true (fn [_snapshot _user] 
                                    {:wow (delay true)
                                     :are-you-there? false
                                     :can-create? true
                                     :whatsupp? true
-                                    :some-new-fields ["lala"]})))
+                                    :some-new-fields ["firstName"]})))
         {:keys [rejected-objects rejected-fields]} rejections]
     (is (not (empty? tx)))
     (is (empty? rejected-objects))
@@ -272,7 +272,7 @@
         (is (not (empty? rejected-fields)))
         (is (empty? rejected-objects))))))
 
-(deftest ^:test-refresh/focus 
+(deftest 
   replace-fields
   (let [user-uuid (random-uuid)
         location-uuid (random-uuid)
@@ -297,14 +297,14 @@
         json {"LAUser" [(mp/clojure-to-json la-user (get ebn "LAUser"))]
               "LALocation" [(mp/clojure-to-json la-location (get ebn "LALocation"))]} 
         {:keys [tx rejections]} 
-        (testing "Even though the protected fields ('some-new-fields') are nonsense, they are not being checked here since we do not use them when first creating an object"
+        (testing "creating an object"
           (push-transaction snapshot user-uuid json
                             true (fn [_snapshot _user] 
                                    {:wow (delay true)
                                     :are-you-there? false
                                     :can-create? true
                                     :whatsupp? true
-                                    :some-new-fields ["lala"]})))
+                                    :some-new-fields ["firstName"]})))
         {:keys [rejected-objects rejected-fields]} rejections]
     (is (not (empty? tx)))
     (is (empty? rejected-objects))
@@ -320,7 +320,7 @@
                                                    :are-you-there? false
                                                    :can-create? true
                                                    :whatsupp? true                                                                                  
-                                                   :some-new-fields ["lala"]})))]
+                                                   :some-new-fields ["firstName"]})))]
                        (doall x))))))
     
     (testing "Do a pull and see what came in - replacements should have arrived"
@@ -332,7 +332,7 @@
                                  :can-create? true
                                  :whatsupp? true                                
                                  :lat 82.3
-                                 :some-new-fields ["lala"]}))]
+                                 :some-new-fields ["firstName"]}))]
         ;; Replacement with another field
         (is (= "Polska" (-> result 
                             (get "LALocation")
