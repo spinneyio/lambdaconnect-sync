@@ -2,7 +2,14 @@
   (:require [lambdaconnect-model.tools :as t]
             [clojure.set :as sets]))
 
+
+(defn uuid [] #?(:clj (java.util.UUID/randomUUID)
+                 :cljs (random-uuid)))
+
 (defn invoke [f & args] (apply f args))
+
+(defn speculate [config snapshot transaction]
+  (:db-after ((:with config) snapshot transaction)))
 
 (defn get-objects-by-ids
   ([config entity ids snapshot] 
@@ -21,6 +28,28 @@
                                              inverses) [])))
          ret-val ((:pull-many config) snapshot fields-to-fetch ids)]
      ret-val)))
+
+(defn check-uuids-for-entity [config uuids entity-name snapshot]
+  (when (seq uuids)
+    (let [entity-keyword (keyword entity-name "ident__")]
+      (->> ((:q config)
+            '[:find ?uuid
+              :in $ [?uuid ...] ?attr
+              :where
+              [?e :app/uuid ?uuid]
+              [?e ?attr]]
+            snapshot uuids entity-keyword)
+           (mapv first)
+           set))))
+
+(defn get-id-for-uuid [config snapshot uuid]
+  ((:pull config) snapshot '[:db/id] [:app/uuid uuid]))
+
+(defn get-sync-revision [config snapshot]
+  ((:basis-t config) snapshot))
+
+(defn as-of [config snapshot sync-revision]
+  ((:as-of config) snapshot sync-revision))
 
 (defn get-objects-by-uuids
   ([config entity uuids snapshot] 

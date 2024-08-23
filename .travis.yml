@@ -1,7 +1,16 @@
 language: clojure
+cache:
+  directories:
+    - node_modules
+before_cache:
+  - rm -rf $TRAVIS_BUILD_DIR/node_modules/.cache
+before_install:
+- "./begin-development.sh"
 jobs:
   include:
   - stage: test
-    script: lein test
+    script: lein test && npm run test
 stages:
 - test
+
+

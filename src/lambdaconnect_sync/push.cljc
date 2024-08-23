@@ -2,17 +2,15 @@
   (:require [lambdaconnect-sync.utils :as u]
             [lambdaconnect-model.core :as mp]
             [lambdaconnect-model.tools :as t]
-            [clojure.algo.generic.functor :as functor]
+            [lambdaconnect-model.utils :as mu]
             [clojure.set :refer [subset? difference intersection union]]
             [clojure.spec.alpha :as spec]
             [lambdaconnect-sync.db :as db]
             [lambdaconnect-model.scoping :as scoping]
+            [clojure.pprint :refer [pprint]]
             [lambdaconnect-sync.integrity-constraints :as i]
-            [lambdaconnect-sync.conflicts :as conflicts]))
-
-(defn- fmap
-  [f m]
-  (into (empty m) (for [[k v] m] [k (f v)])))
+            [lambdaconnect-sync.conflicts :as conflicts])
+  #?(:cljs (:require-macros [lambdaconnect-model.macro :refer [future]])))
 
 (defn compute-rel-objs-to-fetch
   "Creates a map of {:umbrella [uuid1, uuid2, ...], :brick [buuid1, buudi2, ...]}. 
@@ -118,7 +116,7 @@
    entities-by-name
    snapshot]
 
-  (let [existing (into {} (pmap (fn [[entity-name uuids]]
+  (let [existing (into {} (mu/pmap (fn [[entity-name uuids]]
                                   (let [description (get entities-by-name entity-name)]
                                     [entity-name (into {}
                                                        (map (fn [o] [(:app/uuid o) (mp/replace-inverses o description true)])
@@ -129,7 +127,7 @@
                                                              snapshot
                                                              true)))]))
                                 objects-to-fetch))
-        created (into {} (pmap (fn [[entity-name uuids]]
+        created (into {} (mu/pmap (fn [[entity-name uuids]]
                                  (let [existing-uuids (set (keys (get existing entity-name)))
                                        entity (get entities-by-name entity-name)]
                                    [entity-name (into {} (map (fn [uuid]
@@ -232,7 +230,7 @@
                   new-object (get rel-objects (:app/uuid new-value))
                   old-referenced-uuid (:app/uuid (inverse-name new-object))
                   ;; TODO: sprawdzić czy na pewno ta zmiana jest ok
-                  old-reference ((:pull config) snapshot '[:db/id] [:app/uuid old-referenced-uuid])
+                  old-reference (db/get-id-for-uuid config snapshot old-referenced-uuid)
                   transactions (if (not= (:app/uuid existing-object) (:app/uuid new-object))
                                  (filter identity [(when existing-object
                                                      [:db/retract (:db/id existing-object) inverse-name db-id])
@@ -265,7 +263,7 @@
    entities-by-name ; schema dictionary
    snapshot ; database snapshot to work with
    ]
-  (let [uuids-by-entity-name (fmap #(map :app/uuid %) input)
+  (let [uuids-by-entity-name (mu/map-keys #(map :app/uuid %) input)
         uuids (apply concat (vals uuids-by-entity-name))] ; first: json-json duplicates
     (assert (= (count (set uuids)) (count uuids)) (str "Duplicates found in input json: "
                                                        (let [groups (group-by identity uuids)
@@ -299,7 +297,7 @@
                             relationship-names (map mp/datomic-name (vals (:relationships entity)))]
                         (apply
                          concat
-                         (pmap (fn [object]
+                         (mu/pmap (fn [object]
                                  (let [db-object (get-in objects [entity-name (:app/uuid object)])
                                        _ ((:log config) "DB OBJECT: " db-object)
                                        _ ((:log config) "OBJECT:: " object)
@@ -366,7 +364,7 @@
 
 (defn internal-push-transaction
   ([config incoming-json internal-user snapshot entities-by-name scoped-push-input-for-user]
-   (internal-push-transaction config incoming-json internal-user snapshot entities-by-name scoped-push-input-for-user (java.util.Date.)))
+   (internal-push-transaction config incoming-json internal-user snapshot entities-by-name scoped-push-input-for-user #?(:clj (java.util.Date.) :cljs (js/Date.))))
   ([config incoming-json internal-user snapshot entities-by-name scoped-push-input-for-user now]
    ((:log config) "=========---------===========--------- PUSH ----------============-----------============")
    ((:log config) "INCOMING: " incoming-json)
@@ -383,11 +381,14 @@
                                           (let [transformed (mp/json-to-clojure json-obj entity)
                                                 json-obj-spec (mp/spec-for-name (:name entity))]
                                             (assert (spec/valid? json-obj-spec transformed)
-                                                    (spec/explain-str json-obj-spec transformed))
+                                                    (str "Spec failed: "
+                                                         (spec/explain-str json-obj-spec transformed)
+                                                         "\n for object: " transformed
+                                                         "\n spec: " json-obj-spec))                                            
                                             transformed)) objects)))]) incoming-json))
          [input scoped-uuids] (scoped-push-input-for-user mapped-input internal-user entities-by-name snapshot)
          rel-objs-to-fetch (compute-rel-objs-to-fetch config input entities-by-name snapshot)
-         input-objs-to-fetch (functor/fmap (fn [v] (set (map :app/uuid v))) input)
+         input-objs-to-fetch (mu/map-keys (fn [v] (set (map :app/uuid v))) input)
          objects-to-fetch (u/join-maps [rel-objs-to-fetch input-objs-to-fetch])]
      (assert (subset? (set (keys input)) (set (keys entities-by-name)))
              (str "Some of the entities from input: "
@@ -486,8 +487,6 @@
 
 ; -------------------- new scoped push -------------------------
 
-(defn- speculate [config snapshot transaction]
-  (:db-after ((:with config) snapshot transaction)))
 
 (defn push-transaction
   ([config incoming-json internal-user snapshot entities-by-name scoping-edn now]
@@ -504,7 +503,7 @@
    (when (:constants original-scoping-edn) (assert (fn? (:constants original-scoping-edn))))
    (let [entity (get entities-by-name (first (keys incoming-json)))
          [transaction [created-objects updated-objects] _] push-output
-         new-db (speculate config snapshot transaction) ; we simulate the transaction to simplify tag discovery and never look at the ugly incoming-json
+         new-db (db/speculate config snapshot transaction) ; we simulate the transaction to simplify tag discovery and never look at the ugly incoming-json
                                                         ; the following permissions come from the speculated db snapshot (new-db)
 
          scoping-edn (if (:constants original-scoping-edn)
@@ -517,13 +516,13 @@
 
          scoped-tags (future ; {:NOUser.me #{#uuid1 #uuid2 #uuid3}, :NOMessage.mine #{#uuid4 #uuid5 #uuid6}} (:app/uuid's are the values in sets)
                        (when scoping-edn 
-                         (functor/fmap (fn [ids] (set (db/uuids-for-ids config new-db ids))) ; we need uuids not ids this time
+                         (mu/map-keys (fn [ids] (set (db/uuids-for-ids config new-db ids))) ; we need uuids not ids this time
                                        (scoping/scope config new-db internal-user entities-by-name new-scoping-edn true)))) 
                                         ; the following permissions come from the original db snapshot
          scoped-tags-snapshot (future ; {:NOUser.me #{#uuid1 #uuid2 #uuid3}, :NOMessage.mine #{#uuid4 #uuid5 #uuid6}} (:app/uuid's are the values in sets)
                                 (or cached-snapshot-tags 
                                     (when scoping-edn 
-                                      (functor/fmap 
+                                      (mu/map-keys 
                                        (fn [ids] (set (db/uuids-for-ids config snapshot ids))) ; we need uuids not ids this time
                                        (scoping/scope config snapshot internal-user entities-by-name scoping-edn true))))) 
          
@@ -614,21 +613,21 @@
                                        (#{:db/retractEntity} (first entry)) (let [[_ id] entry] (object-ids id))
                                        :else (assert false (str "Unknown transaction entry: " entry)))))
 
-           created-uuids (set (u/mapcat keys (vals created-objects)))
-           updated-uuids (set (u/mapcat keys (vals updated-objects)))
+           created-uuids (set (mu/mapcat keys (vals created-objects)))
+           updated-uuids (set (mu/mapcat keys (vals updated-objects)))
 
            ;; ***************** OBJECT REJECTIONS *************************
 
-           rejected-objects (functor/fmap #(filter (fn [o] (let [permissions (or (permissions-for-object (:app/uuid o)) {})
+           rejected-objects (mu/map-keys #(filter (fn [o] (let [permissions (or (permissions-for-object (:app/uuid o)) {})
                                                                  {:keys [modify create] :or {modify false create false}} permissions]
                                                              ((:log config) (str "REJECTING? " (:app/uuid o)  permissions))
                                                              (cond (created-uuids (:app/uuid o)) (not create)
                                                                    (updated-uuids (:app/uuid o)) (not modify)
                                                                    :else (assert false (str "Logic error - object not found" o))))) %) 
-                                          (functor/fmap #(if (empty? %) [] (vals %)) (merge-with merge created-objects updated-objects)))
+                                          (mu/map-keys #(if (empty? %) [] (vals %)) (merge-with merge created-objects updated-objects)))
 
 
-           rejected-id-candidates (functor/fmap #(set (map :db/id %)) rejected-objects)
+           rejected-id-candidates (mu/map-keys #(set (map :db/id %)) rejected-objects)
            _ ((:log config) "Reject candidates: " rejected-id-candidates)
 
            [transaction-after-object-rejections true-rejection-ids rejected-statements-by-id] 
@@ -639,7 +638,7 @@
                  possible-rejected-ids (apply union (map set rejected-objects-per-statement))
                  rejected-ids (intersection rejected-ids possible-rejected-ids)
 
-                 rejected-statements-per-object (functor/fmap 
+                 rejected-statements-per-object (mu/map-keys 
                                                  #(set (map :statements %))
                                                  (group-by :object 
                                                            (apply concat (map (fn [objects statements]
@@ -660,14 +659,14 @@
 
            ;; ***************** FIELD REJECTIONS *************************
 
-           objects-to-filter-fields (functor/fmap
+           objects-to-filter-fields (mu/map-keys
                                      #(filter
                                        (fn [o]
                                          (let [permissions (or (permissions-for-object (:app/uuid o)) {})
                                                {:keys [modify protected-fields writable-fields] :or {modify false}} permissions
                                                field-replacements (or (field-replacements-for-object (:app/uuid o)) #{})]
                                            (and modify (or protected-fields writable-fields (seq field-replacements))))) %)
-                                     (functor/fmap #(if (empty? %) [] (vals %)) updated-objects))
+                                     (mu/map-keys #(if (empty? %) [] (vals %)) updated-objects))
 
            _ ((:log config) "Objects to reject fields: " objects-to-filter-fields)
 
@@ -783,8 +782,8 @@
                    transaction (filter #(not (seq (clojure.set/intersection objects-to-excise (objects-from-entry %)))) transaction)
 
                    ids-in-transaction (apply union (map objects-from-entry transaction))
-                   filtered-created-objects (functor/fmap #(into {} (filter (fn [[k o]] (ids-in-transaction (:db/id o))) %)) created-objects)
-                   filtered-updated-objects (functor/fmap #(into {} (filter (fn [[k o]] (ids-in-transaction (:db/id o))) %)) updated-objects)]
+                   filtered-created-objects (mu/map-keys #(into {} (filter (fn [[k o]] (ids-in-transaction (:db/id o))) %)) created-objects)
+                   filtered-updated-objects (mu/map-keys #(into {} (filter (fn [[k o]] (ids-in-transaction (:db/id o))) %)) updated-objects)]
                ((:log config) "-----------------------------")
                ((:log config) (str "REJECTIONS: " rejections))
                ((:log config) (str "FINAL TRANSACTION: " (vec transaction)))

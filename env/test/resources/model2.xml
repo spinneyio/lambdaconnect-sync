@@ -1,0 +1,146 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<model type="com.apple.IDECoreDataModeler.DataModel" documentVersion="1.0" lastSavedToolsVersion="14490.99" systemVersion="18D109" minimumToolsVersion="Automatic" sourceLanguage="Swift" userDefinedModelVersionIdentifier="">
+    <entity name="FOCuisineType" representedClassName="FOCuisineType" syncable="YES">
+        <attribute name="active" optional="YES" attributeType="Boolean" usesScalarValueType="YES" syncable="YES"/>
+        <attribute name="createdAt" optional="YES" attributeType="Date" usesScalarValueType="NO" syncable="YES"/>
+        <attribute name="name" optional="YES" attributeType="String" maxValueString="100" syncable="YES"/>
+        <attribute name="updatedAt" optional="YES" attributeType="Date" usesScalarValueType="NO" syncable="YES"/>
+        <attribute name="uuid" optional="YES" attributeType="UUID" usesScalarValueType="NO" syncable="YES"/>
+        <relationship name="restaurants" optional="YES" toMany="YES" deletionRule="Nullify" destinationEntity="FORestaurant" inverseName="cuisineTypes" inverseEntity="FORestaurant" syncable="YES"/>
+    </entity>
+    <entity name="FODiscountTime" representedClassName="FODiscountTime" syncable="YES">
+        <attribute name="active" attributeType="Boolean" usesScalarValueType="YES" syncable="YES"/>
+        <attribute name="createdAt" attributeType="Date" usesScalarValueType="NO" syncable="YES"/>
+        <attribute name="date" attributeType="Date" usesScalarValueType="NO" syncable="YES"/>
+        <attribute name="discount" attributeType="Integer 16" defaultValueString="0" usesScalarValueType="YES" syncable="YES"/>
+        <attribute name="size" optional="YES" attributeType="Integer 16" defaultValueString="0" usesScalarValueType="YES" syncable="YES"/>
+        <attribute name="startHour" attributeType="String" syncable="YES"/>
+        <attribute name="updatedAt" attributeType="Date" usesScalarValueType="NO" syncable="YES"/>
+        <attribute name="uuid" attributeType="UUID" usesScalarValueType="NO" syncable="YES"/>
+        <relationship name="reservation" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="FOReservationTemplate" inverseName="discount" inverseEntity="FOReservationTemplate" syncable="YES"/>
+        <relationship name="restaurant" maxCount="1" deletionRule="Nullify" destinationEntity="FORestaurant" inverseName="discounts" inverseEntity="FORestaurant" syncable="YES"/>
+    </entity>
+    <entity name="FOFeedback" representedClassName="FOFeedback" syncable="YES">
+        <attribute name="active" attributeType="Boolean" usesScalarValueType="YES" syncable="YES"/>
+        <attribute name="comment" attributeType="String" maxValueString="2000" syncable="YES"/>
+        <attribute name="createdAt" attributeType="Date" usesScalarValueType="NO" syncable="YES"/>
+        <attribute name="rating" attributeType="Integer 16" minValueString="1" maxValueString="5" usesScalarValueType="YES" syncable="YES"/>
+        <attribute name="updatedAt" attributeType="Date" usesScalarValueType="NO" syncable="YES"/>
+        <attribute name="uuid" attributeType="UUID" usesScalarValueType="NO" syncable="YES"/>
+        <relationship name="reservation" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="FOReservation" inverseName="feedback" inverseEntity="FOReservation" syncable="YES"/>
+    </entity>
+    <entity name="FOLocalization" representedClassName="FOLocalization" syncable="YES">
+        <attribute name="active" attributeType="Boolean" usesScalarValueType="YES" syncable="YES"/>
+        <attribute name="bottomHash" optional="YES" attributeType="String" syncable="YES"/>
+        <attribute name="city" optional="YES" attributeType="String" maxValueString="100" syncable="YES"/>
+        <attribute name="country" optional="YES" attributeType="String" maxValueString="100" syncable="YES"/>
+        <attribute name="createdAt" attributeType="Date" usesScalarValueType="NO" syncable="YES"/>
+        <attribute name="latitude" optional="YES" attributeType="Double" minValueString="-90" maxValueString="90" usesScalarValueType="YES" syncable="YES"/>
+        <attribute name="leftHash" optional="YES" attributeType="String" syncable="YES"/>
+        <attribute name="logitude" optional="YES" attributeType="Double" minValueString="-90" maxValueString="90" usesScalarValueType="YES" syncable="YES"/>
+        <attribute name="number" optional="YES" attributeType="String" maxValueString="20" syncable="YES"/>
+        <attribute name="rightHash" optional="YES" attributeType="String" syncable="YES"/>
+        <attribute name="street" optional="YES" attributeType="String" maxValueString="30" syncable="YES"/>
+        <attribute name="topHash" optional="YES" attributeType="String" syncable="YES"/>
+        <attribute name="updatedAt" attributeType="Date" usesScalarValueType="NO" syncable="YES"/>
+        <attribute name="uuid" attributeType="UUID" usesScalarValueType="NO" syncable="YES"/>
+        <attribute name="zipCode" optional="YES" attributeType="String" maxValueString="10" syncable="YES"/>
+        <relationship name="restaurant" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="FORestaurant" inverseName="localization" inverseEntity="FORestaurant" syncable="YES"/>
+        <relationship name="user" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="FOUser" inverseName="localization" inverseEntity="FOUser" syncable="YES"/>
+    </entity>
+    <entity name="FOPicture" representedClassName="FOPicture" syncable="YES">
+        <attribute name="active" optional="YES" attributeType="Boolean" usesScalarValueType="YES" syncable="YES"/>
+        <attribute name="createdAt" optional="YES" attributeType="Date" usesScalarValueType="NO" syncable="YES"/>
+        <attribute name="picture" optional="YES" attributeType="URI" syncable="YES"/>
+        <attribute name="updatedAt" optional="YES" attributeType="Date" usesScalarValueType="NO" syncable="YES"/>
+        <attribute name="uuid" optional="YES" attributeType="UUID" usesScalarValueType="NO" syncable="YES"/>
+        <relationship name="restaurant" maxCount="1" deletionRule="Nullify" destinationEntity="FORestaurant" inverseName="pictures" inverseEntity="FORestaurant" syncable="YES"/>
+    </entity>
+    <entity name="FOReservation" representedClassName="FOReservation" syncable="YES">
+        <attribute name="active" attributeType="Boolean" usesScalarValueType="YES" syncable="YES"/>
+        <attribute name="createdAt" attributeType="Date" usesScalarValueType="NO" syncable="YES"/>
+        <attribute name="dateOfReservation" attributeType="Date" usesScalarValueType="NO" syncable="YES"/>
+        <attribute name="updatedAt" attributeType="Date" usesScalarValueType="NO" syncable="YES"/>
+        <attribute name="uuid" attributeType="UUID" usesScalarValueType="NO" syncable="YES"/>
+        <relationship name="feedback" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="FOFeedback" inverseName="reservation" inverseEntity="FOFeedback" syncable="YES"/>
+        <relationship name="template" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="FOReservationTemplate" inverseName="reservations" inverseEntity="FOReservationTemplate" syncable="YES"/>
+        <relationship name="user" maxCount="1" deletionRule="Nullify" destinationEntity="FOUser" inverseName="reservations" inverseEntity="FOUser" syncable="YES"/>
+    </entity>
+    <entity name="FOReservationTemplate" representedClassName="FOReservationTemplate" syncable="YES">
+        <attribute name="active" attributeType="Boolean" usesScalarValueType="YES" syncable="YES"/>
+        <attribute name="createdAt" attributeType="Date" usesScalarValueType="NO" syncable="YES"/>
+        <attribute name="frequency" attributeType="Integer 16" defaultValueString="0" usesScalarValueType="YES" syncable="YES"/>
+        <attribute name="numberOfPeople" attributeType="Integer 16" defaultValueString="0" usesScalarValueType="YES" syncable="YES"/>
+        <attribute name="price" attributeType="Integer 32" minValueString="0" defaultValueString="0" usesScalarValueType="YES" syncable="YES"/>
+        <attribute name="promoCode" optional="YES" attributeType="String" maxValueString="20" syncable="YES"/>
+        <attribute name="updatedAt" attributeType="Date" usesScalarValueType="NO" syncable="YES"/>
+        <attribute name="uuid" attributeType="UUID" usesScalarValueType="NO" syncable="YES"/>
+        <relationship name="discount" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="FODiscountTime" inverseName="reservation" inverseEntity="FODiscountTime" syncable="YES"/>
+        <relationship name="reservations" optional="YES" toMany="YES" deletionRule="Nullify" destinationEntity="FOReservation" inverseName="template" inverseEntity="FOReservation" syncable="YES"/>
+    </entity>
+    <entity name="FORestaurant" representedClassName="FORestaurant" syncable="YES">
+        <attribute name="about" attributeType="String" maxValueString="2024" syncable="YES"/>
+        <attribute name="active" attributeType="Boolean" usesScalarValueType="YES" syncable="YES"/>
+        <attribute name="costRating" attributeType="Integer 16" minValueString="1" maxValueString="3" usesScalarValueType="YES" syncable="YES"/>
+        <attribute name="createdAt" attributeType="Date" usesScalarValueType="NO" syncable="YES"/>
+        <attribute name="name" attributeType="String" maxValueString="100" syncable="YES"/>
+        <attribute name="numberOfReservations" transient="YES" attributeType="Integer 16" defaultValueString="0" usesScalarValueType="YES" syncable="YES"/>
+        <attribute name="openingHours" attributeType="String" syncable="YES"/>
+        <attribute name="pageURL" optional="YES" attributeType="String" maxValueString="1000" syncable="YES"/>
+        <attribute name="pictureMenu" optional="YES" attributeType="URI" syncable="YES"/>
+        <attribute name="rating" attributeType="Integer 32" minValueString="1" maxValueString="5" usesScalarValueType="YES" syncable="YES"/>
+        <attribute name="textMenu" optional="YES" attributeType="String" syncable="YES"/>
+        <attribute name="type" optional="YES" attributeType="String" syncable="YES"/>
+        <attribute name="updatedAt" attributeType="Date" usesScalarValueType="NO" syncable="YES"/>
+        <attribute name="uuid" attributeType="UUID" usesScalarValueType="NO" syncable="YES"/>
+        <relationship name="cuisineTypes" optional="YES" toMany="YES" deletionRule="Nullify" destinationEntity="FOCuisineType" inverseName="restaurants" inverseEntity="FOCuisineType" syncable="YES"/>
+        <relationship name="discounts" optional="YES" toMany="YES" deletionRule="Nullify" destinationEntity="FODiscountTime" inverseName="restaurant" inverseEntity="FODiscountTime" syncable="YES"/>
+        <relationship name="localization" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="FOLocalization" inverseName="restaurant" inverseEntity="FOLocalization" syncable="YES"/>
+        <relationship name="pictures" optional="YES" toMany="YES" deletionRule="Nullify" destinationEntity="FOPicture" inverseName="restaurant" inverseEntity="FOPicture" syncable="YES"/>
+        <relationship name="webUser" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="FOWebUser" inverseName="restaurant" inverseEntity="FOWebUser" syncable="YES"/>
+    </entity>
+    <entity name="FOSynchInfo" representedClassName="FOSynchInfo" syncable="YES">
+        <attribute name="counter" optional="YES" attributeType="Integer 64" defaultValueString="0" usesScalarValueType="YES" syncable="YES"/>
+        <attribute name="date" optional="YES" attributeType="Date" usesScalarValueType="NO" syncable="YES"/>
+        <attribute name="name" optional="YES" attributeType="String" syncable="YES"/>
+        <attribute name="type" optional="YES" attributeType="String" syncable="YES"/>
+    </entity>
+    <entity name="FOUser" representedClassName="FOUser" syncable="YES">
+        <attribute name="active" optional="YES" attributeType="Boolean" usesScalarValueType="YES" syncable="YES"/>
+        <attribute name="createdAt" attributeType="Date" usesScalarValueType="NO" syncable="YES"/>
+        <attribute name="email" attributeType="String" minValueString="2" maxValueString="100" syncable="YES"/>
+        <attribute name="facebookID" optional="YES" attributeType="String" syncable="YES"/>
+        <attribute name="firstname" attributeType="String" minValueString="2" maxValueString="40" syncable="YES"/>
+        <attribute name="googleID" optional="YES" attributeType="String" syncable="YES"/>
+        <attribute name="password" optional="YES" transient="YES" attributeType="String" syncable="YES"/>
+        <attribute name="phoneNumber" attributeType="String" maxValueString="18" syncable="YES"/>
+        <attribute name="surname" attributeType="String" minValueString="2" maxValueString="40" syncable="YES"/>
+        <attribute name="updatedAt" attributeType="Date" usesScalarValueType="NO" syncable="YES"/>
+        <attribute name="username" attributeType="String" minValueString="2" maxValueString="40" syncable="YES"/>
+        <attribute name="uuid" attributeType="UUID" usesScalarValueType="NO" syncable="YES"/>
+        <relationship name="localization" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="FOLocalization" inverseName="user" inverseEntity="FOLocalization" syncable="YES"/>
+        <relationship name="reservations" optional="YES" toMany="YES" deletionRule="Nullify" destinationEntity="FOReservation" inverseName="user" inverseEntity="FOReservation" syncable="YES"/>
+        <relationship name="webUsers" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="FOWebUser" inverseName="user" inverseEntity="FOWebUser" syncable="YES"/>
+    </entity>
+    <entity name="FOWebUser" representedClassName="FOWebUser" syncable="YES">
+        <attribute name="active" optional="YES" attributeType="Boolean" usesScalarValueType="YES" syncable="YES"/>
+        <attribute name="createdAt" optional="YES" attributeType="Date" usesScalarValueType="NO" syncable="YES"/>
+        <attribute name="updatedAt" optional="YES" attributeType="Date" usesScalarValueType="NO" syncable="YES"/>
+        <attribute name="uuid" optional="YES" attributeType="UUID" usesScalarValueType="NO" syncable="YES"/>
+        <relationship name="restaurant" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="FORestaurant" inverseName="webUser" inverseEntity="FORestaurant" syncable="YES"/>
+        <relationship name="user" optional="YES" toMany="YES" deletionRule="Nullify" destinationEntity="FOUser" inverseName="webUsers" inverseEntity="FOUser" syncable="YES"/>
+    </entity>
+    <elements>
+        <element name="FOCuisineType" positionX="-241.19140625" positionY="205.09375" width="128" height="133"/>
+        <element name="FODiscountTime" positionX="-77.71875" positionY="485.08203125" width="128" height="193"/>
+        <element name="FOFeedback" positionX="-779.55859375" positionY="815.8984375" width="128" height="148"/>
+        <element name="FOLocalization" positionX="-927" positionY="279" width="128" height="300"/>
+        <element name="FOPicture" positionX="-236.1796875" positionY="351.08203125" width="128" height="133"/>
+        <element name="FOReservation" positionX="-524.796875" positionY="600.96875" width="128" height="163"/>
+        <element name="FOReservationTemplate" positionX="-262.6953125" positionY="708.65234375" width="128" height="195"/>
+        <element name="FORestaurant" positionX="-583.984375" positionY="129.16796875" width="128" height="328"/>
+        <element name="FOSynchInfo" positionX="-774" positionY="306" width="128" height="105"/>
+        <element name="FOUser" positionX="-1100.375" positionY="536.10546875" width="128" height="268"/>
+        <element name="FOWebUser" positionX="-801" positionY="623" width="128" height="135"/>
+    </elements>
+</model>

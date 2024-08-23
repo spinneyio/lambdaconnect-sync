@@ -1,9 +1,11 @@
-(ns lambdaconnect-sync.test-core
+(ns lambdaconnect-sync.test.core-test
   (:require [lambdaconnect-sync.core :as sync]
             [clojure.test :refer [deftest testing is use-fixtures] :as t]
             [clojure.spec.alpha :as s]
             [lambdaconnect-model.core :as mp]
+            [lambdaconnect-sync.test.basic :as b]
             [lambdaconnect-model.tools :as mpt]
+            [lambdaconnect-sync.db :as db]
             [lambdaconnect-model.scoping :as scoping]
             [clojure.data.json :refer [read-str]]
             [clojure.spec.gen.alpha :as gen]
@@ -42,72 +44,22 @@
 
 (def Epsilon 0.0001)
 
-(defn speculate [db t]
-  (:db-after (d/with db t)))
-
-(defn get-mobile-sync-config []
-  {:log (constantly nil)
-   :as-of d/as-of
-   :pull d/pull
-   :pull-many d/pull-many
-   :q d/q
-   :history d/history
-   :tx->t d/tx->t
-   :with d/with
-   :basis-t d/basis-t})
-
-(def conn (atom nil))
-
-(defn setup-basic-test-environment [model-path f]
-  (let [db-name "datomic:mem://test-db"
-        entities-by-name (mp/entities-by-name model-path)]    
-    (d/create-database db-name)
-
-    (reset! conn (d/connect db-name))
-    @(d/transact @conn [{:db/ident              :app/uuid
-                         :db/valueType          :db.type/uuid
-                         :db/cardinality        :db.cardinality/one
-                         :db/unique             :db.unique/identity
-                         :db/doc                "UUID for an object in the system"}
-                        
-                        {:db/ident              :app/createdAt
-                         :db/valueType          :db.type/instant
-                         :db/cardinality        :db.cardinality/one
-                         :db/doc                "Creation time"}
-                        
-                        {:db/ident              :app/updatedAt
-                         :db/valueType          :db.type/instant
-                         :db/cardinality        :db.cardinality/one
-                         :db/doc                "Last update time"}
-                        
-                        {:db/ident              :app/active
-                         :db/valueType          :db.type/boolean
-                         :db/cardinality        :db.cardinality/one
-                         :db/doc                "If false, it means the entity was deleted"}])
-    @(d/transact @conn (mp/datomic-schema entities-by-name))   
-    (mp/specs entities-by-name 
-     {:LAUser/email (fn [] (gen/fmap #(str % "@test.com") (gen/string-alphanumeric)))
-      :LAUser/gender #(s/gen #{"U" "M" "F"})})
-
-    (try (f)
-         (finally           
-           (d/delete-database db-name)
-           (reset! conn nil)))))
-
-(use-fixtures :once (partial setup-basic-test-environment "env/test/test-model.xml"))
+(use-fixtures :once (partial b/setup-basic-test-environment "env/test/resources/test-model-0.xml"
+                             {:LAUser/email (fn [] (gen/fmap #(str % "@test.com") (gen/string-alphanumeric)))
+                              :LAUser/gender #(s/gen #{"U" "M" "F"})}))
 
 (defn push-transaction [snapshot user-uuid params suppress-log? constants]
   (let [read-edn (fn [path] (read-string (slurp path)))
-        entities-by-name (mp/entities-by-name "env/test/test-model.xml")
-        scoping-edn (read-edn "env/test/test-scope.edn")
+        entities-by-name (mp/entities-by-name "env/test/resources/test-model-0.xml")
+        scoping-edn (read-edn "env/test/resources/test-scope-0.edn")
         _ (scoping/validate-pull-scope entities-by-name scoping-edn)                
         push-scoping-edn (assoc (scoping/add-include-in-push-permission scoping-edn)
                                 :constants constants)
         time (java.util.Date.)       
         user (d/entity snapshot (d/q '[:find ?e . :in $ ?uuid :where [?e :app/uuid ?uuid]] snapshot user-uuid))
         config (if-not suppress-log? 
-                 (assoc (get-mobile-sync-config) :log println)
-                 (get-mobile-sync-config))
+                 (assoc b/mobile-sync-config :log println)
+                 b/mobile-sync-config)
                                         ;to generate data import transactions REMOVE :log
 
         [transaction [created-objects updated-objects] rejections]
@@ -117,26 +69,26 @@
 
 (defn pull [snapshot user-uuid params suppress-log? constants]
   (let [read-edn (fn [path] (read-string (slurp path)))
-        entities-by-name (mp/entities-by-name "env/test/test-model.xml")
-        scoping-edn (read-edn "env/test/test-scope.edn")
+        entities-by-name (mp/entities-by-name "env/test/resources/test-model-0.xml")
+        scoping-edn (read-edn "env/test/resources/test-scope-0.edn")
         _ (scoping/validate-pull-scope entities-by-name scoping-edn)                
         pull-scoping-edn (assoc scoping-edn
                                 :constants constants)
         time (java.util.Date.)       
         user (d/entity snapshot (d/q '[:find ?e . :in $ ?uuid :where [?e :app/uuid ?uuid]] snapshot user-uuid))
         config (if-not suppress-log? 
-                 (assoc (get-mobile-sync-config) :log println)
-                 (get-mobile-sync-config))]
+                 (assoc b/mobile-sync-config :log println)
+                 b/mobile-sync-config)]
     (sync/pull config params user snapshot entities-by-name pull-scoping-edn)))
 
 (deftest test-core-data-xml-conversion
   (testing "Reading model file one"
-    (let [model (mp/entities-by-name "env/test/test-model.xml")]
+    (let [model (mp/entities-by-name "env/test/resources/test-model-0.xml")]
       (is (= (count model) 6))
       (testing ";Json to model converter"
         (try
           (let [game-model (get model "LAGame")
-                json (-> "env/test/fixtures.json"
+                json (-> "env/test/resources/fixtures-0.json"
                          slurp
                          read-str)
                 ent (-> json (get "LAGame") first (mp/json-to-clojure game-model))
@@ -153,21 +105,21 @@
             (.printStackTrace e))))))
 
   (testing "Schema from model"
-    (let [model (mp/entities-by-name "env/test/test-model.xml")
+    (let [model (mp/entities-by-name "env/test/resources/test-model-0.xml")
           schema (mp/datomic-schema model)]
       (is (= (+ 37 8 (count model)) (count schema)))))
   
   (testing "User info"
-    (let [model (mp/entities-by-name "env/test/test-model.xml")]
+    (let [model (mp/entities-by-name "env/test/resources/test-model-0.xml")]
       (is (seq (get-in model ["LAGame" :user-info])))
       (is (seq (get-in model ["LAGame" :attributes "gameDescription"]))))))
 
 (deftest
   push-rejected 
   (let [user-uuid (random-uuid)
-        ebn (mp/entities-by-name "env/test/test-model.xml")
-        _ @(d/transact @conn [{:app/uuid user-uuid}])
-        snapshot (d/db @conn)
+        ebn (mp/entities-by-name "env/test/resources/test-model-0.xml")
+        _ @(d/transact @b/conn [{:app/uuid user-uuid}])
+        snapshot (d/db @b/conn)
         la-user (-> (gen/sample (s/gen (mp/spec-for-name :LAUser)) 1)
                     (first)
                     (assoc :LAUser/internalUserId user-uuid)
@@ -190,9 +142,9 @@
 (deftest
   push-accepted 
   (let [user-uuid (random-uuid)
-        ebn (mp/entities-by-name "env/test/test-model.xml")
-        _ @(d/transact @conn [{:app/uuid user-uuid}])
-        snapshot (d/db @conn)
+        ebn (mp/entities-by-name "env/test/resources/test-model-0.xml")
+        _ @(d/transact @b/conn [{:app/uuid user-uuid}])
+        snapshot (d/db @b/conn)
         la-user (-> (gen/sample (s/gen (mp/spec-for-name :LAUser)) 1)
                     (first)
                     (assoc :LAUser/internalUserId user-uuid)
@@ -215,9 +167,9 @@
 (deftest 
   push-accepted-edit-rejected
   (let [user-uuid (random-uuid)
-        ebn (mp/entities-by-name "env/test/test-model.xml")
-        _ @(d/transact @conn [{:app/uuid user-uuid}])
-        snapshot (d/db @conn)
+        ebn (mp/entities-by-name "env/test/resources/test-model-0.xml")
+        _ @(d/transact @b/conn [{:app/uuid user-uuid}])
+        snapshot (d/db @b/conn)
         la-user (-> (gen/sample (s/gen (mp/spec-for-name :LAUser)) 1)
                     (first)
                     (assoc :LAUser/internalUserId user-uuid)
@@ -239,7 +191,7 @@
     (is (empty? rejected-fields))    
     
     (testing "Try editing fails - wrong protected fields definition"
-      (let [snapshot (speculate snapshot tx)]
+      (let [snapshot (db/speculate b/mobile-sync-config snapshot tx)]
         (is (thrown? AssertionError
                      (push-transaction snapshot user-uuid {"LAUser" [(mp/clojure-to-json la-user (get ebn "LAUser"))]} 
                                        true (fn [_snapshot _user] 
@@ -250,7 +202,7 @@
                                                :some-new-fields ["lala"]}))))))
 
     (testing "Try editing succeeds but with rejections and empty transaction"
-      (let [snapshot (speculate snapshot tx)
+      (let [snapshot (db/speculate b/mobile-sync-config snapshot tx)
             {:keys [tx rejections]} 
             (push-transaction snapshot user-uuid {"LAUser" [(mp/clojure-to-json (assoc la-user :LAUser/firstName "Zorro") (get ebn "LAUser"))]} 
                                        true (fn [_snapshot _user] 
@@ -276,9 +228,9 @@
   replace-fields
   (let [user-uuid (random-uuid)
         location-uuid (random-uuid)
-        ebn (mp/entities-by-name "env/test/test-model.xml")
-        _ @(d/transact @conn [{:app/uuid user-uuid}])
-        snapshot (d/db @conn)
+        ebn (mp/entities-by-name "env/test/resources/test-model-0.xml")
+        _ @(d/transact @b/conn [{:app/uuid user-uuid}])
+        snapshot (d/db @b/conn)
         la-user (-> (gen/sample (s/gen (mp/spec-for-name :LAUser)) 1)
                     (first)
                     (assoc :LAUser/internalUserId user-uuid)
@@ -311,7 +263,7 @@
     (is (empty? rejected-fields))    
     
     (testing "Do a pull (fails because constant 'lat' is not defined)"
-      (let [snapshot (speculate snapshot tx)]
+      (let [snapshot (db/speculate b/mobile-sync-config snapshot tx)]
         ;; Lazy nightmare
         (is (thrown? java.util.concurrent.ExecutionException 
                      (doseq [x (vals (pull snapshot user-uuid {"LAUser" 0 "LALocation" 0} 
@@ -324,7 +276,7 @@
                        (doall x))))))
     
     (testing "Do a pull and see what came in - replacements should have arrived"
-      (let [snapshot (speculate snapshot tx)
+      (let [snapshot (db/speculate b/mobile-sync-config snapshot tx)
             result (pull snapshot user-uuid {"LAUser" 0 "LALocation" 0} 
                          true (fn [_snapshot _user]
                                 {:wow (delay true)
@@ -345,7 +297,7 @@
                                         (get "latitude"))))))))
     
     (testing "Try editing succeeds but replaced fields are not actually replaced"
-      (let [snapshot (speculate snapshot tx)
+      (let [snapshot (db/speculate b/mobile-sync-config snapshot tx)
             {:keys [tx rejections]} 
             (push-transaction snapshot user-uuid {"LALocation" 
                                                   [(mp/clojure-to-json (assoc la-location 
