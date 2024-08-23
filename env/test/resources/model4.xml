@@ -1,0 +1,331 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<model type="com.apple.IDECoreDataModeler.DataModel" documentVersion="1.0" lastSavedToolsVersion="15702" systemVersion="19D76" minimumToolsVersion="Automatic" sourceLanguage="Swift" userDefinedModelVersionIdentifier="">
+    <entity name="NOActivity" representedClassName="NOActivity" syncable="YES">
+        <attribute name="active" optional="YES" attributeType="Boolean" defaultValueString="YES" usesScalarValueType="YES"/>
+        <attribute name="caloriesBurnt" optional="YES" attributeType="Double" defaultValueString="0.0" usesScalarValueType="YES"/>
+        <attribute name="createdAt" optional="YES" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="distance" optional="YES" attributeType="Double" defaultValueString="0.0" usesScalarValueType="YES"/>
+        <attribute name="duration" optional="YES" attributeType="Double" defaultValueString="0.0" usesScalarValueType="YES"/>
+        <attribute name="exerciseType" optional="YES" attributeType="String"/>
+        <attribute name="numberOfRepetitions" optional="YES" attributeType="Integer 16" defaultValueString="0" usesScalarValueType="YES"/>
+        <attribute name="updatedAt" optional="YES" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="uuid" optional="YES" attributeType="UUID" usesScalarValueType="NO"/>
+        <relationship name="user" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="NOClient" inverseName="activities" inverseEntity="NOClient"/>
+    </entity>
+    <entity name="NOCall" representedClassName="NOCall" syncable="YES">
+        <attribute name="active" optional="YES" attributeType="Boolean" defaultValueString="YES" usesScalarValueType="YES"/>
+        <attribute name="createdAt" optional="YES" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="endDate" optional="YES" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="scheduledDate" optional="YES" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="scheduledDuration" optional="YES" attributeType="Integer 64" defaultValueString="0"/>
+        <attribute name="startDate" optional="YES" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="updatedAt" optional="YES" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="uuid" optional="YES" attributeType="UUID" usesScalarValueType="NO"/>
+        <attribute name="videoURI" optional="YES" attributeType="URI"/>
+        <relationship name="client" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="NOClient" inverseName="calls" inverseEntity="NOClient"/>
+        <relationship name="dietitian" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="NODietitian" inverseName="calls" inverseEntity="NODietitian"/>
+    </entity>
+    <entity name="NOClient" representedClassName="NOClient" syncable="YES">
+        <attribute name="active" optional="YES" attributeType="Boolean" defaultValueString="YES" usesScalarValueType="YES"/>
+        <attribute name="activityLevel" optional="YES" attributeType="Integer 16" defaultValueString="0" usesScalarValueType="YES"/>
+        <attribute name="allergies" optional="YES" attributeType="String"/>
+        <attribute name="createdAt" optional="YES" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="currentWeight" optional="YES" attributeType="Double" defaultValueString="0.0" usesScalarValueType="YES"/>
+        <attribute name="dietGoal" optional="YES" attributeType="String"/>
+        <attribute name="foodDislikes" optional="YES" attributeType="String"/>
+        <attribute name="height" optional="YES" attributeType="Double" defaultValueString="0.0" usesScalarValueType="YES"/>
+        <attribute name="occupation" optional="YES" attributeType="String"/>
+        <attribute name="subscriptionAutorenewal" optional="YES" attributeType="String"/>
+        <attribute name="updatedAt" optional="YES" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="uuid" optional="YES" attributeType="UUID" usesScalarValueType="NO"/>
+        <attribute name="weightGoal" optional="YES" attributeType="Double" defaultValueString="0" usesScalarValueType="YES"/>
+        <relationship name="activities" optional="YES" toMany="YES" deletionRule="Nullify" destinationEntity="NOActivity" inverseName="user" inverseEntity="NOActivity"/>
+        <relationship name="baseUser" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="NOUser" inverseName="client" inverseEntity="NOUser"/>
+        <relationship name="calls" optional="YES" toMany="YES" deletionRule="Nullify" destinationEntity="NOCall" inverseName="client" inverseEntity="NOCall"/>
+        <relationship name="ingredients" optional="YES" toMany="YES" deletionRule="Nullify" destinationEntity="NOMealIngredient" inverseName="user" inverseEntity="NOMealIngredient"/>
+        <relationship name="mealItems" optional="YES" toMany="YES" deletionRule="Nullify" destinationEntity="NOMealDiaryItem" inverseName="client" inverseEntity="NOMealDiaryItem"/>
+        <relationship name="subscriptions" optional="YES" toMany="YES" deletionRule="Nullify" destinationEntity="NOSubscription" inverseName="client" inverseEntity="NOSubscription"/>
+        <relationship name="weightHistory" optional="YES" toMany="YES" deletionRule="Nullify" destinationEntity="NOWeightHistory" inverseName="user" inverseEntity="NOWeightHistory"/>
+    </entity>
+    <entity name="NODietitian" representedClassName="NODietitian" syncable="YES">
+        <attribute name="active" optional="YES" attributeType="Boolean" defaultValueString="YES" usesScalarValueType="YES"/>
+        <attribute name="additionalSpeciality" optional="YES" attributeType="String"/>
+        <attribute name="bio" optional="YES" attributeType="String"/>
+        <attribute name="consultationPrice" optional="YES" attributeType="Double" defaultValueString="0.0" usesScalarValueType="YES"/>
+        <attribute name="createdAt" optional="YES" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="currentEarnings" optional="YES" attributeType="Double" defaultValueString="0.0" usesScalarValueType="YES"/>
+        <attribute name="facebookAccount" optional="YES" attributeType="URI"/>
+        <attribute name="googleAccount" optional="YES" attributeType="URI"/>
+        <attribute name="instagramAccount" optional="YES" attributeType="URI"/>
+        <attribute name="mainSpeciality" optional="YES" attributeType="String"/>
+        <attribute name="twitterAccount" optional="YES" attributeType="URI"/>
+        <attribute name="updatedAt" optional="YES" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="uuid" optional="YES" attributeType="UUID" usesScalarValueType="NO"/>
+        <relationship name="availability" optional="YES" toMany="YES" deletionRule="Nullify" ordered="YES" destinationEntity="NODietititanAvailability" inverseName="dietitian" inverseEntity="NODietititanAvailability"/>
+        <relationship name="baseUser" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="NOUser" inverseName="dietitian" inverseEntity="NOUser"/>
+        <relationship name="calls" optional="YES" toMany="YES" deletionRule="Nullify" destinationEntity="NOCall" inverseName="dietitian" inverseEntity="NOCall"/>
+        <relationship name="mealPlans" optional="YES" toMany="YES" deletionRule="Nullify" destinationEntity="NOMealPlan" inverseName="dietitian" inverseEntity="NOMealPlan"/>
+        <relationship name="notes" optional="YES" toMany="YES" deletionRule="Nullify" destinationEntity="NONote" inverseName="user" inverseEntity="NONote"/>
+        <relationship name="payoutHistory" optional="YES" toMany="YES" deletionRule="Nullify" destinationEntity="NOPayout" inverseName="dietitian" inverseEntity="NOPayout"/>
+        <relationship name="subscriptionPlans" optional="YES" toMany="YES" deletionRule="Nullify" destinationEntity="NOSubscriptionPlan" inverseName="dietitian" inverseEntity="NOSubscriptionPlan"/>
+        <relationship name="verificationRequest" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="NOVerificationRequest" inverseName="dietitian" inverseEntity="NOVerificationRequest"/>
+    </entity>
+    <entity name="NODietititanAvailability" representedClassName="NODietititanAvailability" syncable="YES">
+        <attribute name="active" optional="YES" attributeType="Boolean" defaultValueString="YES" usesScalarValueType="YES"/>
+        <attribute name="createdAt" optional="YES" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="dayOfTheWeek" optional="YES" attributeType="String"/>
+        <attribute name="endHour" optional="YES" attributeType="Float" defaultValueString="0.0" usesScalarValueType="YES"/>
+        <attribute name="startHour" optional="YES" attributeType="Float" defaultValueString="0.0" usesScalarValueType="YES"/>
+        <attribute name="updatedAt" optional="YES" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="uuid" optional="YES" attributeType="UUID" usesScalarValueType="NO"/>
+        <relationship name="dietitian" optional="YES" toMany="YES" deletionRule="Nullify" ordered="YES" destinationEntity="NODietitian" inverseName="availability" inverseEntity="NODietitian"/>
+    </entity>
+    <entity name="NOLanguage" representedClassName="NOLanguage" syncable="YES">
+        <attribute name="active" optional="YES" attributeType="Boolean" defaultValueString="YES" usesScalarValueType="YES"/>
+        <attribute name="createdAt" optional="YES" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="languageCode" optional="YES" attributeType="String"/>
+        <attribute name="name" optional="YES" attributeType="String"/>
+        <attribute name="updatedAt" optional="YES" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="uuid" optional="YES" attributeType="UUID" usesScalarValueType="NO"/>
+        <relationship name="users" optional="YES" toMany="YES" deletionRule="Nullify" destinationEntity="NOUser" inverseName="languages" inverseEntity="NOUser"/>
+    </entity>
+    <entity name="NOLocation" representedClassName="NOLocation" syncable="YES">
+        <attribute name="active" optional="YES" attributeType="Boolean" defaultValueString="YES" usesScalarValueType="YES"/>
+        <attribute name="city" optional="YES" attributeType="String"/>
+        <attribute name="country" optional="YES" attributeType="String"/>
+        <attribute name="createdAt" optional="YES" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="latitude" optional="YES" attributeType="Double" defaultValueString="0.0" usesScalarValueType="YES"/>
+        <attribute name="longitude" optional="YES" attributeType="Double" defaultValueString="0.0" usesScalarValueType="YES"/>
+        <attribute name="updatedAt" optional="YES" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="uuid" optional="YES" attributeType="UUID" usesScalarValueType="NO"/>
+        <relationship name="users" optional="YES" toMany="YES" deletionRule="Nullify" destinationEntity="NOUser" inverseName="location" inverseEntity="NOUser"/>
+    </entity>
+    <entity name="NOMealDetails" representedClassName="NOMealDetails" syncable="YES">
+        <attribute name="active" optional="YES" attributeType="Boolean" defaultValueString="YES" usesScalarValueType="YES"/>
+        <attribute name="annotation" optional="YES" attributeType="String"/>
+        <attribute name="createdAt" optional="YES" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="eatTime" optional="YES" attributeType="String"/>
+        <attribute name="mealType" optional="YES" attributeType="String"/>
+        <attribute name="name" optional="YES" attributeType="String"/>
+        <attribute name="updatedAt" optional="YES" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="uuid" optional="YES" attributeType="UUID" usesScalarValueType="NO"/>
+        <relationship name="ingredients" optional="YES" toMany="YES" deletionRule="Nullify" destinationEntity="NOMealIngredient" inverseName="mealDetails" inverseEntity="NOMealIngredient"/>
+        <relationship name="mealItem" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="NOMealDiaryItem" inverseName="mealDetails" inverseEntity="NOMealDiaryItem"/>
+        <relationship name="mealPlanItem" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="NOMealPlanItem" inverseName="mealDetails" inverseEntity="NOMealPlanItem"/>
+    </entity>
+    <entity name="NOMealDiaryItem" representedClassName="NOMealDiaryItem" syncable="YES">
+        <attribute name="active" optional="YES" attributeType="Boolean" defaultValueString="YES" usesScalarValueType="YES"/>
+        <attribute name="createdAt" optional="YES" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="mealDate" optional="YES" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="mealPhoto" optional="YES" attributeType="URI"/>
+        <attribute name="updatedAt" optional="YES" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="uuid" optional="YES" attributeType="UUID" usesScalarValueType="NO"/>
+        <relationship name="client" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="NOClient" inverseName="mealItems" inverseEntity="NOClient"/>
+        <relationship name="mealDetails" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="NOMealDetails" inverseName="mealItem" inverseEntity="NOMealDetails"/>
+        <relationship name="mealPlanItem" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="NOMealPlanItem" inverseName="mealItem" inverseEntity="NOMealPlanItem"/>
+    </entity>
+    <entity name="NOMealIngredient" representedClassName="NOMealIngredient" syncable="YES">
+        <attribute name="active" optional="YES" attributeType="Boolean" defaultValueString="YES" usesScalarValueType="YES"/>
+        <attribute name="createdAt" optional="YES" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="name" optional="YES" attributeType="String"/>
+        <attribute name="nutritionixID" optional="YES" attributeType="String"/>
+        <attribute name="pictureURL" optional="YES" attributeType="URI"/>
+        <attribute name="updatedAt" optional="YES" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="uuid" optional="YES" attributeType="UUID" usesScalarValueType="NO"/>
+        <relationship name="mealDetails" optional="YES" toMany="YES" deletionRule="Nullify" destinationEntity="NOMealDetails" inverseName="ingredients" inverseEntity="NOMealDetails"/>
+        <relationship name="nutritionInfo" optional="YES" toMany="YES" deletionRule="Nullify" destinationEntity="NONutritionInfo" inverseName="foodIngredient" inverseEntity="NONutritionInfo"/>
+        <relationship name="user" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="NOClient" inverseName="ingredients" inverseEntity="NOClient"/>
+    </entity>
+    <entity name="NOMealPlan" representedClassName="NOMealPlan" syncable="YES">
+        <attribute name="active" optional="YES" attributeType="Boolean" defaultValueString="YES" usesScalarValueType="YES"/>
+        <attribute name="createdAt" optional="YES" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="endDate" optional="YES" attributeType="Boolean" usesScalarValueType="YES"/>
+        <attribute name="isSharedWithClient" optional="YES" attributeType="Boolean" usesScalarValueType="YES"/>
+        <attribute name="isViewed" optional="YES" attributeType="Boolean" defaultValueString="YES" usesScalarValueType="YES"/>
+        <attribute name="startDate" optional="YES" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="updatedAt" optional="YES" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="uuid" optional="YES" attributeType="UUID" usesScalarValueType="NO"/>
+        <relationship name="dietitian" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="NODietitian" inverseName="mealPlans" inverseEntity="NODietitian"/>
+        <relationship name="items" optional="YES" toMany="YES" deletionRule="Nullify" destinationEntity="NOMealPlanItem" inverseName="mealPlan" inverseEntity="NOMealPlanItem"/>
+        <relationship name="subscription" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="NOSubscription" inverseName="mealPlans" inverseEntity="NOSubscription"/>
+    </entity>
+    <entity name="NOMealPlanItem" representedClassName="NOMealPlanItem" syncable="YES">
+        <attribute name="active" optional="YES" attributeType="Boolean" defaultValueString="YES" usesScalarValueType="YES"/>
+        <attribute name="createdAt" optional="YES" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="updatedAt" optional="YES" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="uuid" optional="YES" attributeType="UUID" usesScalarValueType="NO"/>
+        <relationship name="mealDetails" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="NOMealDetails" inverseName="mealPlanItem" inverseEntity="NOMealDetails"/>
+        <relationship name="mealItem" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="NOMealDiaryItem" inverseName="mealPlanItem" inverseEntity="NOMealDiaryItem"/>
+        <relationship name="mealPlan" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="NOMealPlan" inverseName="items" inverseEntity="NOMealPlan"/>
+    </entity>
+    <entity name="NOMessage" representedClassName="NOMessage" syncable="YES">
+        <attribute name="active" optional="YES" attributeType="Boolean" defaultValueString="YES" usesScalarValueType="YES"/>
+        <attribute name="createdAt" optional="YES" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="isRead" optional="YES" attributeType="Boolean" usesScalarValueType="YES"/>
+        <attribute name="mediaUrl" optional="YES" attributeType="URI"/>
+        <attribute name="messageType" optional="YES" attributeType="String"/>
+        <attribute name="text" optional="YES" attributeType="String"/>
+        <attribute name="updatedAt" optional="YES" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="uuid" optional="YES" attributeType="UUID" usesScalarValueType="NO"/>
+        <relationship name="receiver" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="NOUser" inverseName="messagesReceived" inverseEntity="NOUser"/>
+        <relationship name="reply" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="NOMessage" inverseName="replyTo" inverseEntity="NOMessage"/>
+        <relationship name="replyTo" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="NOMessage" inverseName="reply" inverseEntity="NOMessage"/>
+        <relationship name="sender" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="NOUser" inverseName="messagesSent" inverseEntity="NOUser"/>
+        <relationship name="starredBy" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="NOUser" inverseName="starredMessages" inverseEntity="NOUser"/>
+    </entity>
+    <entity name="NONote" representedClassName="NONote" syncable="YES">
+        <attribute name="active" optional="YES" attributeType="Boolean" defaultValueString="YES" usesScalarValueType="YES"/>
+        <attribute name="createdAt" optional="YES" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="text" optional="YES" attributeType="String"/>
+        <attribute name="topic" optional="YES" attributeType="String"/>
+        <attribute name="updatedAt" optional="YES" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="userId" optional="YES" attributeType="String"/>
+        <attribute name="uuid" optional="YES" attributeType="UUID" usesScalarValueType="NO"/>
+        <relationship name="user" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="NODietitian" inverseName="notes" inverseEntity="NODietitian"/>
+    </entity>
+    <entity name="NONotification" representedClassName="NONotification" syncable="YES">
+        <attribute name="active" optional="YES" attributeType="Boolean" usesScalarValueType="YES"/>
+        <attribute name="createdAt" optional="YES" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="iconName" optional="YES" attributeType="String"/>
+        <attribute name="isRead" optional="YES" attributeType="Boolean" usesScalarValueType="YES"/>
+        <attribute name="message" optional="YES" attributeType="String"/>
+        <attribute name="updatedAt" optional="YES" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="uuid" optional="YES" attributeType="UUID" usesScalarValueType="NO"/>
+        <relationship name="user" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="NOUser" inverseName="notifications" inverseEntity="NOUser"/>
+    </entity>
+    <entity name="NONutritionInfo" representedClassName="NONutritionInfo" syncable="YES">
+        <attribute name="active" optional="YES" attributeType="Boolean" defaultValueString="YES" usesScalarValueType="YES"/>
+        <attribute name="amount" optional="YES" attributeType="Double" defaultValueString="0.0" usesScalarValueType="YES"/>
+        <attribute name="createdAt" optional="YES" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="name" optional="YES" attributeType="String"/>
+        <attribute name="unit" optional="YES" attributeType="String"/>
+        <attribute name="updatedAt" optional="YES" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="uuid" optional="YES" attributeType="UUID" usesScalarValueType="NO"/>
+        <relationship name="foodIngredient" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="NOMealIngredient" inverseName="nutritionInfo" inverseEntity="NOMealIngredient"/>
+    </entity>
+    <entity name="NOPayout" representedClassName="NOPayout" syncable="YES">
+        <attribute name="active" optional="YES" attributeType="Boolean" defaultValueString="YES" usesScalarValueType="YES"/>
+        <attribute name="amount" optional="YES" attributeType="Double" defaultValueString="0.0" usesScalarValueType="YES"/>
+        <attribute name="createdAt" optional="YES" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="updatedAt" optional="YES" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="uuid" optional="YES" attributeType="UUID" usesScalarValueType="NO"/>
+        <relationship name="dietitian" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="NODietitian" inverseName="payoutHistory" inverseEntity="NODietitian"/>
+    </entity>
+    <entity name="NOSubscription" representedClassName="NOSubscription" syncable="YES">
+        <attribute name="active" optional="YES" attributeType="Boolean" defaultValueString="YES" usesScalarValueType="YES"/>
+        <attribute name="createdAt" optional="YES" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="startDate" optional="YES" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="updatedAt" optional="YES" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="uuid" optional="YES" attributeType="UUID" usesScalarValueType="NO"/>
+        <relationship name="client" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="NOClient" inverseName="subscriptions" inverseEntity="NOClient"/>
+        <relationship name="mealPlans" optional="YES" toMany="YES" deletionRule="Nullify" destinationEntity="NOMealPlan" inverseName="subscription" inverseEntity="NOMealPlan"/>
+        <relationship name="plan" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="NOSubscriptionPlan" inverseName="subscriptions" inverseEntity="NOSubscriptionPlan"/>
+    </entity>
+    <entity name="NOSubscriptionPlan" representedClassName="NOSubscriptionPlan" syncable="YES">
+        <attribute name="active" optional="YES" attributeType="Boolean" defaultValueString="YES" usesScalarValueType="YES"/>
+        <attribute name="callDuration" optional="YES" attributeType="Integer 16" defaultValueString="0" usesScalarValueType="YES"/>
+        <attribute name="createdAt" optional="YES" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="currency" optional="YES" attributeType="String"/>
+        <attribute name="isChatAvailable" optional="YES" attributeType="Boolean" usesScalarValueType="YES"/>
+        <attribute name="isMealPlanIncluded" optional="YES" attributeType="Boolean" usesScalarValueType="YES"/>
+        <attribute name="liveMeetupPossibility" optional="YES" attributeType="Boolean" usesScalarValueType="YES"/>
+        <attribute name="name" optional="YES" attributeType="String"/>
+        <attribute name="numberOfCalls" optional="YES" attributeType="Double" defaultValueString="0.0" usesScalarValueType="YES"/>
+        <attribute name="numberOfDays" optional="YES" attributeType="Integer 16" defaultValueString="0" usesScalarValueType="YES"/>
+        <attribute name="planDescription" optional="YES" attributeType="String"/>
+        <attribute name="planDescriptionArabic" optional="YES" attributeType="String"/>
+        <attribute name="price" optional="YES" attributeType="Double" defaultValueString="0.0" usesScalarValueType="YES"/>
+        <attribute name="subscriptionLimit" optional="YES" attributeType="Integer 16" defaultValueString="0" usesScalarValueType="YES"/>
+        <attribute name="updatedAt" optional="YES" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="uuid" optional="YES" attributeType="UUID" usesScalarValueType="NO"/>
+        <relationship name="dietitian" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="NODietitian" inverseName="subscriptionPlans" inverseEntity="NODietitian"/>
+        <relationship name="subscriptions" optional="YES" toMany="YES" deletionRule="Nullify" destinationEntity="NOSubscription" inverseName="plan" inverseEntity="NOSubscription"/>
+    </entity>
+    <entity name="NOSynchData" representedClassName="NOSynchData" syncable="YES">
+        <attribute name="counter" optional="YES" attributeType="Integer 64" defaultValueString="0" usesScalarValueType="YES"/>
+        <attribute name="date" optional="YES" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="name" optional="YES" attributeType="String"/>
+        <attribute name="type" optional="YES" attributeType="String"/>
+    </entity>
+    <entity name="NOUser" representedClassName="NOUser" syncable="YES">
+        <attribute name="active" optional="YES" attributeType="Boolean" defaultValueString="YES" usesScalarValueType="YES"/>
+        <attribute name="age" optional="YES" attributeType="Integer 16" defaultValueString="0" usesScalarValueType="YES"/>
+        <attribute name="birthDate" optional="YES" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="createdAt" optional="YES" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="email" optional="YES" attributeType="String"/>
+        <attribute name="facebookID" optional="YES" attributeType="String"/>
+        <attribute name="fullName" optional="YES" attributeType="String"/>
+        <attribute name="gender" optional="YES" attributeType="String"/>
+        <attribute name="googleID" optional="YES" attributeType="String"/>
+        <attribute name="instagramID" optional="YES" attributeType="String"/>
+        <attribute name="internalUserId" optional="YES" attributeType="String"/>
+        <attribute name="paymentCurrency" optional="YES" attributeType="String"/>
+        <attribute name="profilePictureUrl" optional="YES" attributeType="URI"/>
+        <attribute name="updatedAt" optional="YES" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="usesImperialUnits" optional="YES" attributeType="Boolean" usesScalarValueType="YES"/>
+        <attribute name="uuid" optional="YES" attributeType="UUID" usesScalarValueType="NO"/>
+        <relationship name="client" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="NOClient" inverseName="baseUser" inverseEntity="NOClient"/>
+        <relationship name="dietitian" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="NODietitian" inverseName="baseUser" inverseEntity="NODietitian"/>
+        <relationship name="languages" optional="YES" toMany="YES" deletionRule="Nullify" destinationEntity="NOLanguage" inverseName="users" inverseEntity="NOLanguage"/>
+        <relationship name="location" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="NOLocation" inverseName="users" inverseEntity="NOLocation"/>
+        <relationship name="messagesReceived" optional="YES" toMany="YES" deletionRule="Nullify" destinationEntity="NOMessage" inverseName="receiver" inverseEntity="NOMessage"/>
+        <relationship name="messagesSent" optional="YES" toMany="YES" deletionRule="Nullify" destinationEntity="NOMessage" inverseName="sender" inverseEntity="NOMessage"/>
+        <relationship name="notifications" optional="YES" toMany="YES" deletionRule="Nullify" destinationEntity="NONotification" inverseName="user" inverseEntity="NONotification"/>
+        <relationship name="starredMessages" optional="YES" toMany="YES" deletionRule="Nullify" destinationEntity="NOMessage" inverseName="starredBy" inverseEntity="NOMessage"/>
+    </entity>
+    <entity name="NOVerificationRequest" representedClassName="NOVerificationRequest" syncable="YES">
+        <attribute name="accepted" optional="YES" attributeType="Boolean" usesScalarValueType="YES"/>
+        <attribute name="active" optional="YES" attributeType="Boolean" defaultValueString="YES" usesScalarValueType="YES"/>
+        <attribute name="createdAt" optional="YES" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="updatedAt" optional="YES" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="uuid" optional="YES" attributeType="UUID" usesScalarValueType="NO"/>
+        <attribute name="verified" optional="YES" attributeType="Boolean" usesScalarValueType="YES"/>
+        <relationship name="dietitian" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="NODietitian" inverseName="verificationRequest" inverseEntity="NODietitian"/>
+        <relationship name="items" optional="YES" toMany="YES" deletionRule="Nullify" destinationEntity="NOVerificationRequestItem" inverseName="verificationRequest" inverseEntity="NOVerificationRequestItem"/>
+    </entity>
+    <entity name="NOVerificationRequestItem" representedClassName="NOVerificationRequestItem" syncable="YES">
+        <attribute name="active" optional="YES" attributeType="Boolean" defaultValueString="YES" usesScalarValueType="YES"/>
+        <attribute name="createdAt" optional="YES" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="resourceURI" optional="YES" attributeType="URI"/>
+        <attribute name="text" optional="YES" attributeType="String"/>
+        <attribute name="type" optional="YES" attributeType="String"/>
+        <attribute name="university" optional="YES" attributeType="String"/>
+        <attribute name="updatedAt" optional="YES" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="uuid" optional="YES" attributeType="UUID" usesScalarValueType="NO"/>
+        <relationship name="verificationRequest" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="NOVerificationRequest" inverseName="items" inverseEntity="NOVerificationRequest"/>
+    </entity>
+    <entity name="NOWeightHistory" representedClassName="NOWeightHistory" syncable="YES">
+        <attribute name="active" optional="YES" attributeType="Boolean" defaultValueString="YES" usesScalarValueType="YES"/>
+        <attribute name="createdAt" optional="YES" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="updatedAt" optional="YES" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="uuid" optional="YES" attributeType="UUID" usesScalarValueType="NO"/>
+        <attribute name="weight" optional="YES" attributeType="Double" defaultValueString="0.0" usesScalarValueType="YES"/>
+        <relationship name="user" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="NOClient" inverseName="weightHistory" inverseEntity="NOClient"/>
+    </entity>
+    <elements>
+        <element name="NOActivity" positionX="-1411.39453125" positionY="-1151.28125" width="128" height="193"/>
+        <element name="NOCall" positionX="-1438.04296875" positionY="-933.40625" width="128" height="208"/>
+        <element name="NOClient" positionX="-1203.7265625" positionY="-1181.29296875" width="128" height="343"/>
+        <element name="NODietitian" positionX="-465.78125" positionY="-642.99609375" width="128" height="358"/>
+        <element name="NODietititanAvailability" positionX="-232.35546875" positionY="-688.61328125" width="128" height="163"/>
+        <element name="NOLanguage" positionX="-1471.078125" positionY="-628.34765625" width="128" height="148"/>
+        <element name="NOLocation" positionX="-987.3203125" positionY="-419.0859375" width="128" height="178"/>
+        <element name="NOMealDetails" positionX="-491.17578125" positionY="-1110.9296875" width="128" height="208"/>
+        <element name="NOMealDiaryItem" positionX="-677.0234375" positionY="-1101.28515625" width="128" height="178"/>
+        <element name="NOMealIngredient" positionX="-328.97265625" positionY="-1077.7265625" width="128" height="193"/>
+        <element name="NOMealPlan" positionX="-825.00390625" positionY="-946.5078125" width="128" height="208"/>
+        <element name="NOMealPlanItem" positionX="-500.62109375" positionY="-808.265625" width="128" height="148"/>
+        <element name="NOMessage" positionX="-1432.2109375" positionY="-468.02734375" width="128" height="238"/>
+        <element name="NONote" positionX="-248.78515625" positionY="-516.26171875" width="128" height="163"/>
+        <element name="NONotification" positionX="-1018.03125" positionY="-653.96484375" width="128" height="163"/>
+        <element name="NONutritionInfo" positionX="-127.98828125" positionY="-1064.34765625" width="128" height="163"/>
+        <element name="NOPayout" positionX="-270.328125" positionY="-332.2421875" width="128" height="133"/>
+        <element name="NOSubscription" positionX="-978.13671875" positionY="-826.75390625" width="128" height="163"/>
+        <element name="NOSubscriptionPlan" positionX="-670.80078125" positionY="-720.3515625" width="128" height="313"/>
+        <element name="NOSynchData" positionX="-1470.44140625" positionY="-735.53125" width="128" height="103"/>
+        <element name="NOUser" positionX="-1194.28515625" positionY="-742.453125" width="128" height="403"/>
+        <element name="NOVerificationRequest" positionX="-686.18359375" positionY="-366.94921875" width="128" height="163"/>
+        <element name="NOVerificationRequestItem" positionX="-464.5" positionY="-284.44921875" width="128" height="178"/>
+        <element name="NOWeightHistory" positionX="-995.4140625" positionY="-1145.296875" width="128" height="133"/>
+    </elements>
+</model>

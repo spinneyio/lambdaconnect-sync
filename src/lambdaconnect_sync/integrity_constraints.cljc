@@ -1,22 +1,10 @@
 (ns lambdaconnect-sync.integrity-constraints
-  (:require [clojure.set :as s]))
+  (:require [clojure.set :as s]
+            [lambdaconnect-sync.db :as db]))
 
 (defn- set-last [coll x]
   ; Replace last element of coll by x
   (conj (pop coll) x))
-
-(defn get-uuids-from-db [config uuids entity-name snapshot]
-  (when (seq uuids)
-    (let [entity-keyword (keyword entity-name "ident__")]
-      (->> ((:q config)
-            '[:find ?uuid
-              :in $ [?uuid ...] ?attr
-              :where
-              [?e :app/uuid ?uuid]
-              [?e ?attr]]
-            snapshot uuids entity-keyword)
-           (mapv first)
-           set))))
 
 (defn get-uuids-from-json [entity-name push-input]
   (into #{} (map :app/uuid (get push-input entity-name))))
@@ -28,7 +16,7 @@
                    (apply concat)
                    (map :app/uuid)
                    (into #{}))
-        uuids-from-json (get-uuids-from-db config uuids destination-entity-name snapshot)
+        uuids-from-json (db/check-uuids-for-entity config uuids destination-entity-name snapshot)
         uuids-from-db (get-uuids-from-json destination-entity-name push-input)
         all-uuids  (s/union uuids-from-json uuids-from-db #{nil})]
     [entity-name relation-name (s/subset? uuids all-uuids) (s/difference uuids all-uuids)]))
@@ -40,7 +28,7 @@
                    (map :app/uuid)
                    (into #{}))
         uuids-from-json (get-uuids-from-json destination-entity-name push-input)
-        uuids-from-db (get-uuids-from-db config uuids destination-entity-name snapshot)
+        uuids-from-db (db/check-uuids-for-entity config uuids destination-entity-name snapshot)
         all-uuids  (s/union uuids-from-json uuids-from-db #{nil})]
     [entity-name relation-name (s/subset? uuids all-uuids) (s/difference uuids all-uuids)]))
 

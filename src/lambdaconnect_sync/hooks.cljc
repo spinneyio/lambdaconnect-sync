@@ -1,6 +1,7 @@
 (ns lambdaconnect-sync.hooks
   (:require [clojure.string :as string]
             [lambdaconnect-sync.db :as db]
+            [lambdaconnect-model.utils :refer [pmap]]
             [clojure.set :as set]))
 
 (defn get-datomic-relationships [config snapshot]

@@ -1,0 +1,288 @@
+{:NOUser.me {:constraint [= :internalUserId :user/uuid]
+             :permissions {:modify true
+                           :create true
+                           :protected-fields ["badgeCount" "internalUserId" "accountDeactivated"]}}
+
+ :NOLanguage.mine {:constraint [= :user :NOUser.me]
+                   :permissions {:modify true
+                                 :create true}}
+
+ :NOMessage.sentToDietitian {:constraint (and [= :sender :NOUser.me]
+                                              [= :receiver :NOUser.myDietitian])
+                             :permissions {:modify true
+                                           :create true
+                                           :protected-fields ["isRead"]}}
+
+ :NOMessage.receivedFromDietitian {:constraint (and [= :receiver :NOUser.me]
+                                                    [= :sender :NOUser.myDietitian])
+                                   :permissions {:modify true
+                                                 :create false
+                                                 :writable-fields ["isRead" "replies" "starredBy"]}}
+
+ :NOMessage.sentToClient {:constraint (and [= :sender :NOUser.me]
+                                           [= :receiver :NOUser.myClient])
+                          :permissions {:modify true
+                                        :create true
+                                        :protected-fields ["isRead"]}}
+
+ :NOMessage.receivedFromClient {:constraint (and [= :receiver :NOUser.me]
+                                                 [= :sender :NOUser.myClient])
+                                :permissions {:modify true
+                                              :create false
+                                              :writable-fields ["isRead" "replies" "starredBy"]}}
+
+ :NONotification.mine {:constraint [= :user :NOUser.me]
+                       :permissions {:modify true
+                                     :writable-fields ["isRead" "isRemoved"]
+                                     :create false}}
+
+ :NOLocation.mine {:constraint [= :user :NOUser.me]
+                   :permissions {:modify true
+                                 :create true}}
+
+ :NOIssueReport.mine {:constraint [= :user :NOUser.me]
+                      :permissions {:modify false
+                                    :create true}}
+
+ :NOIssueReportItem.mine {:constraint [= :issueReport :NOIssueReport.mine]
+                          :permissions {:modify false
+                                        :create true}}
+
+ :NOTransaction.sent {:constraint [= :sender :NOUser.me]
+                      :permissions {:modify false
+                                    :create false}}
+
+ :NOTransaction.received {:constraint [= :receiver :NOUser.me]
+                          :permissions {:modify false
+                                        :create false}}
+
+ :NOCurrency.all {:constraint :all
+                  :permissions {:modify false
+                                :create false}}
+
+ :NOCurrency.mine {:constraint [= :favouriteOfClients :NOClient.me]
+                   :permissions {:modify true
+                                 :create false
+                                 :writable-fields ["favouriteOfClients"]}}
+
+ :NOSpeciality.all {:constraint :all
+                    :permissions {:modify true
+                                  :create false
+                                  :writable-fields ["dietitians"]}}
+
+ :NOCountry.all {:constraint :all
+                 :permissions {:modify false
+                               :create false}}
+
+ :NOCity.all {:constraint :all
+              :permissions {:modify false
+                            :create false}}
+
+
+; I'm client:
+
+ :NOClient.me {:constraint [= :baseUser :NOUser.me]
+               :permissions {:modify true
+                             :create true
+                             :protected-fields ["weightGoal"]}}
+ :NOSubscription.mine {:constraint [= :client :NOClient.me]
+                       :permissions {:modify true
+                                     :create false
+                                     :writable-fields ["favouriteOfAClient"]}}
+ :NOClientSpecialistAssociation.mine {:constraint [= :client :NOClient.me]
+                                      :permissions {:modify true
+                                                    :create false
+                                                    :writable-fields ["favouriteOfAClient"]}}
+ :NOCall.client {:constraint [= :subscription :NOSubscription.mine]
+                 :permissions {:modify true ; can we modify the call as a client?
+                               :writable-fields ["active"]
+                               :create false}}
+ :NOActivity.mine {:constraint [= :client :NOClient.me]
+                   :permissions {:modify true
+                                 :create true}}
+ :NOWeightHistory.mine {:constraint [= :client :NOClient.me]
+                        :permissions {:modify true
+                                      :create true}}
+ :NONotificationPermissionsClient.mine {:constraint [= :client :NOClient.me]
+                                        :permissions {:modify true
+                                                      :create true}}
+ :NOMealDetails.diary {:constraint [= :client :NOClient.me]
+                       :permissions {:modify true
+                                     :create true}}
+
+ :NOSubscriptionPlan.myDietitian {:constraint [contains? :subscriptions :NOSubscription.mine]
+                                  :permissions {:modify false
+                                                :create false}}
+
+ :NOMealPlan.forMe {:constraint [= :subscription :NOSubscription.mine]
+                    :permissions {:modify true
+                                  :writable-fields ["isViewed"]
+                                  :create false}}
+
+ :NOMealDetails.fromPlan {:constraint [= :mealPlan :NOMealPlan.forMe]
+                          :permissions {:modify true
+                                        :create false
+                                        :writable-fields ["eatenAccordingToPlanItem"]}}
+
+ :NODietitian.myDietitian {:constraint [contains? :subscriptionPlans :NOSubscriptionPlan.myDietitian]
+                           :replace-fields {:currentEarnings 0}
+                           :permissions {:modify false
+                                         :create false}}
+ :NOSubscriptionPlan.fromMyDietitian  {:constraint (and
+                                                    (not [contains? :subscriptions :NOSubscription.mine])
+                                                    [= :dietitian :NODietitian.myDietitian])
+                                       :permissions {:modify false
+                                                     :create false}}
+
+ :NOUser.myDietitian {:constraint [= :dietitian :NODietitian.myDietitian]
+                      :permissions {:modify true
+                                    :writable-fields ["messagesReceived"]
+                                    :create false}
+                      :replace-fields {:birthDate "2000-01-01T00:00:00.000+02:00"
+                                       :email "fake@doom.com"
+                                       :internalUserId "00000000-308e-4c43-baf5-827150df946c"
+                                       :bankAccount "QA54QNBA000000000000693123456"
+                                       :businessId "0123456789"
+                                       :destinationId "0123456789"}}
+ :NOLocation.myDietitian {:constraint [= :user :NOUser.myDietitian]
+                          :permissions {:modify false
+                                        :create false}}
+ :NOLanguage.myDietitian {:constraint [= :user :NOUser.myDietitian]
+                          :permissions {:modify false
+                                        :create false}}
+ :NOVerificationRequest.myDietitian {:constraint [= :dietitian :NODietitian.myDietitian]
+                                     :permissions {:modify false
+                                                   :create false}}
+ :NOVerificationRequestItem.myDietitian {:constraint [= :verificationRequest :NOVerificationRequest.myDietitian]
+                                         :permissions {:modify false
+                                                       :create false}}
+
+ :NORefundPolicy.myDietitian {:constraint (or
+                                           [= :plan :NOSubscriptionPlan.myDietitian]
+                                           [= :plan :NOSubscriptionPlan.fromMyDietitian])
+                              :permissions {:modify false
+                                            :create false}}
+
+; I'm dietitian
+
+ :NODietitian.me {:constraint [= :baseUser :NOUser.me]
+                  :permissions {:modify true
+                                :create true
+                                :protected-fields ["link" "hasCreatedClinic" "systemSubscriptionStatus" "isTestAccount"]}}
+ :NOMealPlan.planned {:constraint [= :dietitian :NODietitian.me]
+                      :permissions {:modify true
+                                    :create true}}
+ :NOClientSpecialistAssociation.dietitian {:constraint [= :specialist :NODietitian.me]
+                                           :permissions {:modify true
+                                                         :create false
+                                                         :writable-fields ["weightGoal"]}}
+ :NOCall.dietitian {:constraint [= :subscription :NOSubscription.myClient]
+                    :permissions {:modify true
+                                  :create false}}
+ :NOMealDetails.planned {:constraint [= :mealPlan :NOMealPlan.planned]
+                         :permissions {:modify true
+                                       :create true}}
+ :NOSubscriptionPlan.mine {:constraint [= :dietitian :NODietitian.me]
+                           :permissions {:modify false
+                                         :create true}}
+ :NOSubscriptionPlanStatistics.mine {:constraint [= :plan :NOSubscriptionPlan.mine]
+                                     :permissions {:modify false
+                                                   :create false}}
+
+ :NOStatisticsAgeGroup.fromPlan {:constraint [= :planStatistics :NOSubscriptionPlanStatistics.mine]
+                                 :permissions {:modify false
+                                               :create false}}
+ :NOStatisticsMonthly.fromPlan {:constraint [= :planStatistics :NOSubscriptionPlanStatistics.mine]
+                                :permissions {:modify false
+                                              :create false}}
+ :NOStatisticsRegion.fromPlan {:constraint [= :planStatistics :NOSubscriptionPlanStatistics.mine]
+                               :permissions {:modify false
+                                             :create false}}
+
+ :NONotificationPermissionsDietitian.mine {:constraint [= :dietitian :NODietitian.me]
+                                           :permissions {:modify true
+                                                         :create true}}
+ :NOVerificationRequest.mine {:constraint [= :dietitian :NODietitian.me]
+                              :permissions {:modify true
+                                            :create true
+                                            :protected-fields ["accepted" "verified"]}}
+ :NOVerificationRequestItem.mine {:constraint [= :verificationRequest :NOVerificationRequest.mine]
+                                  :permissions {:modify true
+                                                :create true}}
+ :NONote.mine {:constraint [= :dietitian :NODietitian.me]
+               :permissions {:modify true
+                             :create true}}
+ :NOPayout.mine {:constraint [= :dietitian :NODietitian.me]
+                 :permissions {:modify false
+                               :create true}}
+ :NODietitianStatistics.mine {:constraint [= :dietitian :NODietitian.me]
+                              :permissions {:modify false
+                                            :create false}}
+ :NOVirtualClinic.mine {:constraint [= :dietitian :NODietitian.me]
+                        :permissions {:modify false
+                                      :create false}
+                        :replace-fields {:cloudFrontURI "https://www.telahealth.com/"
+                                         :cloudFrontId "XXXXYYYY"
+                                         :redirectCloudFrontURI "https://www.telahealth.com/"
+                                         :redirectCloudFrontId "XXXXYYYY"
+                                         :redirectCertificate "XXXXYYYYZZZZ"}}
+
+ :NOStatisticsAgeGroup.mine {:constraint [= :dietitianStatistics :NODietitianStatistics.mine]
+                             :permissions {:modify false
+                                           :create false}}
+ :NOStatisticsMonthly.mine {:constraint [= :dietitianStatistics :NODietitianStatistics.mine]
+                            :permissions {:modify false
+                                          :create false}}
+ :NOStatisticsRegion.mine {:constraint [= :dietitianStatistics :NODietitianStatistics.mine]
+                           :permissions {:modify false
+                                         :create false}}
+
+ :NORefundPolicy.fromPlan {:constraint [= :plan :NOSubscriptionPlan.mine]
+                           :permissions {:modify false
+                                         :create true}}
+
+ :NOReminder.mine {:constraint [= :dietitian :NODietitian.me]
+                   :permissions {:modify true
+                                 :create true}}
+
+ :NOSystemSubscription.mine {:constraint [= :dietitian :NODietitian.me]
+                             :permissions {:modify false
+                                           :create false}}
+
+ :NOSubscription.myClient {:constraint [= :plan :NOSubscriptionPlan.mine]
+                           :permissions {:modify true
+                                         :create false
+                                         :protected-fields ["startDate" "plan" "client" "calls" "favouriteOfAClient"]}}
+ :NOClient.myClient {:constraint [contains? :subscriptions :NOSubscription.myClient]
+                     :permissions {:modify true
+                                   :writable-fields ["notesAboutClient" "clientAssociatedReminders" "weightGoal"]
+                                   :create false}}
+ :NOUser.myClient {:constraint [= :client :NOClient.myClient]
+                   :permissions {:modify true
+                                 :writable-fields ["messagesReceived"]
+                                 :create false}
+                   :replace-fields {:birthDate "2000-01-01T00:00:00.000+02:00"
+                                    :email "fake@doom.com"
+                                    :internalUserId "00000000-308e-4c43-baf5-827150df946c"
+                                    :bankAccount "QA54QNBA000000000000693123456"
+                                    :businessId "0123456789"
+                                    :destinationId "0123456789"}}
+ :NOLocation.myClient {:constraint [= :user :NOUser.myClient]
+                       :permissions {:modify false
+                                     :create false}}
+
+ :NOLanguage.myClient {:constraint [= :user :NOUser.myClient]
+                       :permissions {:modify false
+                                     :create false}}
+ :NOActivity.myClient {:constraint [= :client :NOClient.myClient]
+                       :permissions {:modify false
+                                     :create false}}
+ :NOWeightHistory.myClient {:constraint [= :client :NOClient.myClient]
+                            :permissions {:modify false
+                                          :create false}}
+ :NOMealDetails.myClientDiary {:constraint [= :client :NOClient.myClient]
+                               :permissions {:modify false
+                                             :create false}}
+
+                                        ; Peers
+ }

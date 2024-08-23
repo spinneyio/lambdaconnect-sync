@@ -1,5 +1,13 @@
 .clj-kondo/*
 .lsp/*
-.DS_STORE
-target/*
+.lein-failures
 .lein-repl-history
+.nrepl-port
+target/*
+node_modules/*
+__tests__/cljs-runtime/*
+__tests__/cljs_tests.js
+.shadow-cljs/*
+pom.xml
+pom.xml.asc
+

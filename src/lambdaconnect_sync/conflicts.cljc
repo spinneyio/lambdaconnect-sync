@@ -31,7 +31,7 @@
         resolve-field-conflicts (fn [new]
                                   (if-let [sync-revision (:app/syncRevision new-object)]
                                     (if (and old-object (not (string? (:db/id old-object)))) ; old-object can be a freshly created one - then there is no conflict possible 
-                                      (if-let [base-snapshot ((:as-of config) snapshot sync-revision)]
+                                      (if-let [base-snapshot (db/as-of config snapshot sync-revision)]
                                         (if-let [base-object (mp/replace-inverses (first (db/get-objects-by-ids config entity [(:db/id old-object)] base-snapshot true)) entity true)]
                                         ; so here we go, an update operation and three objects to compare:
                                         ; 

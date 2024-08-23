@@ -1,4 +1,4 @@
-(ns lambdaconnect-sync.hooks-test
+(ns lambdaconnect-sync.test.hooks
   (:require [clojure.test :refer [deftest is testing]]
             [lambdaconnect-sync.hooks :as hooks]))
 

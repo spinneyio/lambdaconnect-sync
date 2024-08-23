@@ -1,0 +1,23 @@
+{
+  "scripts": {
+    "test": "npx shadow-cljs compile :test && npx jest",
+    "test-watch": "concurrently \"npx jest --watchAll\" \"npx shadow-cljs watch :test\"",
+    "repl": "npx shadow-cljs node-repl"
+  },
+  "devDependencies": {
+    "@babel/core": "^7.25.2",
+    "@babel/preset-env": "^7.25.3",
+    "@types/jest": "^29.5.12",
+    "babel-jest": "^29.7.0",
+    "concurrently": "^8.2.2",
+    "jest": "^29.7.0",
+    "jest-expo": "^51.0.3",
+    "shadow-cljs": "^2.23.3"
+  },
+  "private": true,
+  "name": "lambdaconnect-sync",
+  "version": "1.0.27",
+  "dependencies": {
+    "@xmldom/xmldom": "^0.8.10"
+  }
+}

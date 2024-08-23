@@ -1,0 +1,67 @@
+{"NOUser": [
+    {
+      "active": 1,
+      "age": 21,
+      "birthDate": "1990-03-05T00:00:00.000+01:00",
+      "createdAt": "2019-04-04T00:00:00.000+02:00",
+      "email": "lol@xd.pl",
+      "facebookID": null,
+      "fullName": "Jan Kowalski",
+      "gender": "male",
+      "googleID": null,
+      "instagramID": null,
+      "internalUserId":  "5e82f05b-e0dc-4700-9baf-83f7f562ece1",
+      "paymentCurrency": "PLN",
+      "profilePictureUrl": null,
+      "updatedAt": "2019-11-23T00:00:00.000+01:00",
+      "usesImperialUnits": 0,
+      "uuid": "547bff68-06d6-4d5c-8c33-7ea7c68dcd96",
+      "languages": [],
+      "messagesReceived": [],
+      "messagesSent": [],
+      "starredMessages": [],
+      "client": null,
+      "location": "21a61e44-55f1-4c53-9ab8-70ced05fc5f2",
+      "dietitian": null
+    }],
+"NOClient": [
+  {
+     "active": 1,
+    "activityLevel":0,
+    "allergies": "milk",
+    "createdAt": "2019-04-04T00:00:00.000+02:00",
+    "currentWeight":20,
+    "dietGoal": "be fit",
+    "foodDislikes": "milk",
+    "height": 15,
+    "occupation": "miner",
+    "subscriptionAutorenewal": null,
+    "updatedAt": "2019-11-23T00:00:00.000+01:00",
+    "uuid":  "547bff68-06d6-4d5c-8c33-7ea7c68dcd97",
+    "weightGoal": 12,
+    "activities": ["547bff68-06d6-4d5c-8c33-7ea7c68dcd98"],
+    "baseUser":  "547bff68-06d6-4d5c-8c33-7ea7c68dcd96",
+    "calls": [],
+    "mealItems": [],
+    "subscriptions": [],
+    "weightHistory" : []
+}],
+"NOActivity":[
+{
+  "active":1,
+  "caloriesBurnt":15,
+  "createdAt":  "2019-11-23T00:00:00.000+01:00",
+  "distance": 20,
+  "duration":30,
+  "exerciseType": "running",
+  "numberOfRepetitions": 10,
+  "updatedAt": "2019-11-23T00:00:00.000+01:00",
+  "uuid":   "547bff68-06d6-4d5c-8c33-7ea7c68dcd98",
+  "user":  "547bff68-06d6-4d5c-8c33-7ea7c68dcd97"
+}]}
+
+
+
+
+
+

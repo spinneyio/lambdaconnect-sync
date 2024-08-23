@@ -1,10 +1,8 @@
 (ns lambdaconnect-sync.pull
-  (:require [clojure.algo.generic.functor :as functor]
-            [lambdaconnect-model.tools :as t]
-            [lambdaconnect-model.utils :refer [update-vals merge]]
+  (:require [lambdaconnect-model.tools :as t]
+            [lambdaconnect-model.utils :refer [update-vals merge pmap]]
             [lambdaconnect-model.core :as mp]
             [lambdaconnect-model.scoping :as scoping]
-            [lambdaconnect-sync.utils :as u]
             [clojure.pprint :refer [pprint]]
             [lambdaconnect-sync.db :as db]))
 
@@ -78,7 +76,8 @@
   (let [scoping-edn (if (:constants scoping-edn) 
                       (update scoping-edn :constants #(% snapshot internal-user))
                       scoping-edn)
-        mapping-fun pmap ;; map for debug, pmap for production        
+        mapping-fun pmap ;; map for debug, pmap for production
+        sync-revision (db/get-sync-revision config snapshot)
         [scoped-tags scoped-ids tags-by-ids] 
         (when scoping-edn
           (let [scoped-tags (scoping/scope config snapshot internal-user entities-by-name scoping-edn false (set (keys (dissoc scoping-edn :constants))))]
@@ -98,7 +97,7 @@
                     (let [entity (get entities-by-name entity-name)
                                         ; we create all the relationships as empty and later overwrite 
                           proto-object (merge (into {} (map (fn [r] [(mp/datomic-name r) (if (:to-many r) [] nil)]) (vals (:relationships entity))))
-                                              {:syncRevision ((:basis-t config) snapshot)}
+                                              {:syncRevision sync-revision}
                                               (into {} (map (fn [a] [(mp/datomic-name a) (:default-value a)]) (filter :default-value (vals (:attributes entity))))))]
                       [entity-name (mapping-fun #(-> %
                                                      (mp/replace-inverses entity)
