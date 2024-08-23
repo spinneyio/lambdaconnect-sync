@@ -9,6 +9,7 @@
             [lambdaconnect-model.scoping :as scoping]
             [clojure.pprint :refer [pprint]]
             [lambdaconnect-sync.integrity-constraints :as i]
+            [lambdaconnect-sync.db-drivers.datomic :as datomic-driver]
             [lambdaconnect-sync.conflicts :as conflicts])
   #?(:cljs (:require-macros [lambdaconnect-model.macro :refer [future]])))
 
@@ -229,14 +230,14 @@
             (let [existing-object (first (filter #(= uuid (:app/uuid (inverse-name %))) (vals rel-objects)))
                   new-object (get rel-objects (:app/uuid new-value))
                   old-referenced-uuid (:app/uuid (inverse-name new-object))
-                  ;; TODO: sprawdzić czy na pewno ta zmiana jest ok
-                  old-reference (db/get-id-for-uuid config snapshot old-referenced-uuid)
+                  old-reference-entity (get entities-by-name (:inverse-entity relationship))
+                  old-reference (db/get-id-for-uuid config snapshot old-reference-entity old-referenced-uuid)
                   transactions (if (not= (:app/uuid existing-object) (:app/uuid new-object))
                                  (filter identity [(when existing-object
                                                      [:db/retract (:db/id existing-object) inverse-name db-id])
                                                    (when new-object
-                                                     (if (:db/id old-reference)
-                                                       [:db/cas (:db/id new-object) inverse-name (:db/id old-reference) db-id]
+                                                     (if old-reference
+                                                       [:db/cas (:db/id new-object) inverse-name old-reference db-id]
                                                        [:db/add (:db/id new-object) inverse-name db-id]))]) [])]
               transactions)
                                         ; many-to-one from the many side
@@ -490,14 +491,20 @@
 
 (defn push-transaction
   ([config incoming-json internal-user snapshot entities-by-name scoping-edn now]
-   (push-transaction config incoming-json internal-user snapshot entities-by-name scoping-edn
-                     (internal-push-transaction config incoming-json internal-user snapshot entities-by-name (fn [i _ _ _] [i {}]) now)
-                     {:rejected-objects {} :rejected-fields {}} nil))
+   (let [config (if (:driver config)
+                  config
+                  (assoc config :driver (datomic-driver/->DatomicDatabaseDriver config)))]
+     (push-transaction config incoming-json internal-user snapshot entities-by-name scoping-edn
+                       (internal-push-transaction config incoming-json internal-user snapshot entities-by-name (fn [i _ _ _] [i {}]) now)
+                       {:rejected-objects {} :rejected-fields {}} nil)))
 
   ([config incoming-json internal-user snapshot entities-by-name scoping-edn]
-   (push-transaction config incoming-json internal-user snapshot entities-by-name scoping-edn
-                     (internal-push-transaction config incoming-json internal-user snapshot entities-by-name (fn [i _ _ _] [i {}]))
-                     {:rejected-objects {} :rejected-fields {}} nil))
+   (let [config (if (:driver config)
+                  config
+                  (assoc config :driver (datomic-driver/->DatomicDatabaseDriver config)))]
+     (push-transaction config incoming-json internal-user snapshot entities-by-name scoping-edn
+                       (internal-push-transaction config incoming-json internal-user snapshot entities-by-name (fn [i _ _ _] [i {}]))
+                       {:rejected-objects {} :rejected-fields {}} nil)))
 
   ([config incoming-json internal-user snapshot entities-by-name original-scoping-edn push-output rejections cached-snapshot-tags]
    (when (:constants original-scoping-edn) (assert (fn? (:constants original-scoping-edn))))

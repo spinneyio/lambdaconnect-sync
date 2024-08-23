@@ -1,6 +1,7 @@
 (ns lambdaconnect-sync.hooks
   (:require [clojure.string :as string]
             [lambdaconnect-sync.db :as db]
+            [lambdaconnect-sync.db-drivers.datomic :as datomic-driver]
             [lambdaconnect-model.utils :refer [pmap]]
             [clojure.set :as set]))
 
@@ -243,7 +244,10 @@
    (send-specific-hooks! config before-snapshot snapshot interesting-objects entities-by-name user hook-fun common-state {:transaction [] :mq-transaction []} nil))
 
   ([config before-snapshot snapshot interesting-objects entities-by-name user hook-fun common-state previous-results finaliser-fun]
-   (let [shared-state (or common-state (atom {}))
+   (let [config (if (:driver config)
+                  config
+                  (assoc config :driver (datomic-driver/->DatomicDatabaseDriver config)))
+         shared-state (or common-state (atom {}))
          result (reduce #(merge-with concat %1 %2) 
                         {:transaction [] :mq-transaction []} 
                         (map (fn [[entity-name object-dict]]

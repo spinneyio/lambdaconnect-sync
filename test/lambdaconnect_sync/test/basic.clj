@@ -1,6 +1,7 @@
 (ns lambdaconnect-sync.test.basic
   (:require  [datomic.api :as d]
              [clojure.spec.gen.alpha :as gen]
+             [lambdaconnect-sync.db-drivers.datomic :as datomic-driver]
              [lambdaconnect-model.core :as mp]))
 
 (defn get-mobile-sync-config []
@@ -14,7 +15,8 @@
    :with d/with
    :basis-t d/basis-t})
 
-(def mobile-sync-config (get-mobile-sync-config))
+(def mobile-sync-config (let [c (get-mobile-sync-config)]
+                          (assoc c :driver (datomic-driver/->DatomicDatabaseDriver c))))
 (def conn (atom nil))
 
 (defn setup-basic-test-environment [model-path generators f]

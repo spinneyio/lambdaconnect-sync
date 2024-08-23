@@ -3,6 +3,7 @@
             [lambdaconnect-model.utils :refer [update-vals merge pmap]]
             [lambdaconnect-model.core :as mp]
             [lambdaconnect-model.scoping :as scoping]
+            [lambdaconnect-sync.db-drivers.datomic :as datomic-driver]
             [clojure.pprint :refer [pprint]]
             [lambdaconnect-sync.db :as db]))
 
@@ -73,7 +74,10 @@
    scoping-edn ; as defined in resources/model/pull-scope.edn (or nil for no scoping) additional :constants tag is possible for constants restrictions
    ]
   (when (:constants scoping-edn) (assert (fn? (:constants scoping-edn))))
-  (let [scoping-edn (if (:constants scoping-edn) 
+  (let [config (if (:driver config)
+                 config
+                 (assoc config :driver (datomic-driver/->DatomicDatabaseDriver config)))
+        scoping-edn (if (:constants scoping-edn) 
                       (update scoping-edn :constants #(% snapshot internal-user))
                       scoping-edn)
         mapping-fun pmap ;; map for debug, pmap for production
