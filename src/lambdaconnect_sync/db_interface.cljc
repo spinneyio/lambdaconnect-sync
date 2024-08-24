@@ -15,8 +15,8 @@
   ;;  :NOUser/someAttribute #some-value
   ;;  :NOUser/someRelationshipToMany [{:app/uuid #uuid :db/id #id} ...]
   ;;  :NOUser/someRelationshipToOne {:app/uuid #uuid :db/id #id}
-  ;;  :NOLocation/thissomeInverseRelationshipToMany [{:app/uuid #uuid :db/id #id} ...] ;; if fetch-inverse? is true
-  ;;  :NOLocation/thissomeInverseRelationshipToOne [{:app/uuid #uuid :db/id #id}] ;; if fetch-inverse? is true
+  ;;  :NOLocation/_thisIsSomeInverseRelationshipToMany [{:app/uuid #uuid :db/id #id} ...] ;; if fetch-inverse? is true
+  ;;  :NOLocation/_thisIsSomeInverseRelationshipToOne [{:app/uuid #uuid :db/id #id}] ;; if fetch-inverse? is true
   ;; }
   (objects-by-ids [this snapshot entity ids fetch-inverses?])
 
