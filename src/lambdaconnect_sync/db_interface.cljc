@@ -33,7 +33,7 @@
   ;; Returns sync revision of a snapshot
   (sync-revision [this snapshot])
 
-  ;; Returns database as if it was viewed through gives sync revision
+  ;; Returns database as if it was viewed through given sync revision
   (as-of [this snapshot sync-revision])
 
   ;; Returns objects (in the form given by objects-by-ids with inverse:false) 
