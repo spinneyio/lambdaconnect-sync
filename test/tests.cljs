@@ -1,6 +1,11 @@
 (ns tests
     (:require
      [lambdaconnect-sync.test.hooks]
+     [lambdaconnect-sync.test.core-memory]
+     [lambdaconnect-sync.test.push-memory]
+     [lambdaconnect-sync.test.push-foodie-memory]
+     [lambdaconnect-sync.test.pull-memory]
+     
      [cljs.analyzer.api :as ana-api]    
      [clojure.pprint :refer [pprint]]
      [cljs.test :refer-macros [run-tests run-all-tests]
@@ -10,7 +15,7 @@
 
 (defn test-all []  
   (let [output (with-out-str 
-                 (run-all-tests #".*\.test\..*" 
+                 (run-all-tests #".*lambdaconnect-sync\.test\..*" 
                                 
                                 (merge (empty-env) {:formatter #(if (instance? js/Error %) 
                                                                   (with-out-str 

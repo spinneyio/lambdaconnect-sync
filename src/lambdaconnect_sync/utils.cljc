@@ -29,4 +29,6 @@
 
 
 #?(:clj (defn exception-description [e]
-          (str (class e) " - " (.getMessage e) "\nReceived in: " (stacktrace e))))
+          (str (class e) " - " (.getMessage e) "\nReceived in: " (stacktrace e)))
+   :cljs (defn exception-description [e] (str e)))
+

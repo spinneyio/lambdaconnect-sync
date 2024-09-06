@@ -13,6 +13,8 @@
             [lambdaconnect-sync.conflicts :as conflicts])
   #?(:cljs (:require-macros [lambdaconnect-model.macro :refer [future]])))
 
+(def pmap mu/pmap)
+
 (defn compute-rel-objs-to-fetch
   "Creates a map of {:umbrella [uuid1, uuid2, ...], :brick [buuid1, buudi2, ...]}. 
    The map represents all objects that should be fetched to have the input data complete."
@@ -104,7 +106,7 @@
     ((:log config) "PHASE2: " @phase2)
     ((:log config) "PHASE3: " @phase3)
     ((:log config) "PHASE4: " phase4)
-    ((:log config) result)
+    ((:log config) "RESULT: " result)
     ((:log config) "-------------- /OBJS TO FETCH ------------------")
     result))
 
@@ -116,8 +118,7 @@
    objects-to-fetch
    entities-by-name
    snapshot]
-
-  (let [existing (into {} (mu/pmap (fn [[entity-name uuids]]
+  (let [existing (into {} (pmap (fn [[entity-name uuids]]
                                   (let [description (get entities-by-name entity-name)]
                                     [entity-name (into {}
                                                        (map (fn [o] [(:app/uuid o) (mp/replace-inverses o description true)])
@@ -128,16 +129,20 @@
                                                              snapshot
                                                              true)))]))
                                 objects-to-fetch))
-        created (into {} (mu/pmap (fn [[entity-name uuids]]
+        created (into {} (pmap (fn [[entity-name uuids]]
                                  (let [existing-uuids (set (keys (get existing entity-name)))
                                        entity (get entities-by-name entity-name)]
                                    [entity-name (into {} (map (fn [uuid]
                                                                 [uuid
                                                                  {:app/uuid uuid
-                                                                  :db/id (.toString uuid)
+                                                                  :db/id (str uuid)
                                                                   (t/unique-datomic-identifier entity) true}])
                                                               (filter #(not (existing-uuids %)) uuids)))])) 
                                objects-to-fetch))]
+    ((:log config) "-------------- FETCHED: ------------------")
+    ((:log config) "CREATED: " created)
+    ((:log config) "EXISTING: " existing)
+    ((:log config) "-------------- /FETCHED: ------------------")
     [created existing]))
 
 (defn- cas [db-id attrib old-value new-value]
@@ -205,7 +210,7 @@
   [config snapshot db-id relationship orig-value new-value entities-by-name rel-objects uuid]
   (when true
     ((:log config) "---------------------------- RIGHT ------------------------------")
-    ((:log config) "db-id " db-id " orig-value " orig-value " new value " new-value)
+    ((:log config) (str "db-id: '" db-id "' relationship: '" (:name relationship) "' orig-value: '" orig-value "' new value: '" new-value "'"))
 ;    ((:log config) "TARGET OBJECTS " rel-objects)
     )
 
@@ -298,7 +303,7 @@
                             relationship-names (map mp/datomic-name (vals (:relationships entity)))]
                         (apply
                          concat
-                         (mu/pmap (fn [object]
+                         (pmap (fn [object]
                                  (let [db-object (get-in objects [entity-name (:app/uuid object)])
                                        _ ((:log config) "DB OBJECT: " db-object)
                                        _ ((:log config) "OBJECT:: " object)
@@ -343,6 +348,7 @@
                                                            datomic-relationship (get (:datomic-relationships entity) (name rel-name))
                                                            target-objects (get objects (:destination-entity relationship))
                                                            source-objects (get objects (:name entity))]
+                                                       _ ((:log config) "---------------")
                                                        _ ((:log config) "TRANS ORIG:: " orig-value)
                                                        _ ((:log config) "TRANS DBO-R:: " dbo-r)
                                                        _ ((:log config) "TRANS TARGET-O:: " target-objects)
@@ -410,10 +416,11 @@
                              "Push after scoping: " input " \n")
            error-info {:wrong-relations response :invalid-uuids invalid-uuids :input-after-scope input}]
 
-       (check-for-duplicates config input entities-by-name snapshot)
-       ((:log config) "=========---------===========--------- /PUSH ----------============-----------============")
+       (check-for-duplicates config input entities-by-name snapshot)       
        (if foreign-keys-in-db
-         [transaction [created-objects updated-objects] scoped-uuids]
+         (do 
+           ((:log config) "=========---------===========--------- /PUSH ----------============-----------============")
+           [transaction [created-objects updated-objects] scoped-uuids])
          (do
            ((:log config) error-string)
            (throw (ex-info (str "You are going to create object refering to non existing entity. \n" (dissoc error-info :input-after-scope)) error-info))))))))

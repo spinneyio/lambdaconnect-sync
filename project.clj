@@ -5,6 +5,7 @@
             :url "https://www.eclipse.org/legal/epl-2.0/"}
   :dependencies [[org.clojure/spec.alpha "0.5.238"]
                  [org.clojure/clojure "1.11.4"]
+                 [org.clojure/test.check "1.1.1"]
                  [io.spinney/lambdaconnect-model "1.0.22"]
                  [thheller/shadow-cljs "2.28.12"]]
   :target-path "target/%s"

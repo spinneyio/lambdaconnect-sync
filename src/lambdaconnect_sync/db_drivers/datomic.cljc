@@ -1,6 +1,7 @@
 (ns lambdaconnect-sync.db-drivers.datomic
   (:require [lambdaconnect-sync.db-interface :as i]
             [lambdaconnect-model.tools :as t]
+            [clojure.pprint :refer [pprint]]
             [clojure.set :as sets]))
 
 (defn invoke [f & args] (apply f args))
@@ -97,7 +98,7 @@
             snapshot uuids (t/datomic-name relationship))
            (mapv first))))
   
-  (changed-ids [_ snapshot entity sync-revision scoped-ids]
+  (changed-ids [this snapshot entity sync-revision scoped-ids]
     (let [name  (t/unique-datomic-identifier entity)
           db-now snapshot
           db-changes ((:history config) snapshot)

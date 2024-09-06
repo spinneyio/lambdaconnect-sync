@@ -1,4 +1,4 @@
-(ns lambdaconnect-sync.test.core-test
+(ns lambdaconnect-sync.test.core
   (:require [lambdaconnect-sync.core :as sync]
             [clojure.test :refer [deftest testing is use-fixtures] :as t]
             [clojure.spec.alpha :as s]

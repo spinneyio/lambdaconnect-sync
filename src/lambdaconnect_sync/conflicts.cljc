@@ -63,7 +63,9 @@
                                                                        new-updated (:app/updatedAt new)]
                                                                    (assert (and old-updated new-updated)
                                                                            (str "We should have updatedAt for old and new versions of the object already. Old object: " old-object " new object: "  new-object))
-                                                                   (if (.after old-updated new-updated) ; 2. a)
+                                                                   (if #?(:clj (.after old-updated new-updated)
+                                                                          :cljs (> old-updated new-updated))
+                                                                     ;; 2. a)
                                                                      (do
                                                                        ((:log config) (str (:name attr-or-to-one) " - Conflict resolution case IIa - selected old: '" (kw base-object) "', '" (kw new) "', '" (kw old-object) "'"))
                                                                        [kw (kw old-object)])
