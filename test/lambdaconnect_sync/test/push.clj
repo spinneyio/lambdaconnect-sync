@@ -4,6 +4,7 @@
             [lambdaconnect-sync.test.basic :refer [mobile-sync-config conn] :as b]
             [lambdaconnect-model.core :as mp]
             [datomic.api :as d]
+            [lambdaconnect-model.tools :as mpt]            
             [lambdaconnect-sync.utils :as u]
             [clojure.data.json :refer [read-str]]
             [clojure.spec.gen.alpha :as gen]
@@ -218,3 +219,76 @@
                       nil after-import entities-by-name nil)]
           (is (= 2 (count t2)))
           (db/speculate mobile-sync-config after-import t2))))))
+
+(deftest test-conflict-resolution
+  (testing "Setup;"
+    (let [empty-db (d/db @b/conn)
+          entities-by-name (mp/entities-by-name  (b/load-model-fixture "model1.xml"))          
+          test-json (b/slurp-fixture "fixtures.json")
+          date-parser (mpt/parser-for-attribute (get-in entities-by-name ["FIGame" :attributes "updatedAt"]))]     
+      (testing "push;"
+        (let [[transaction [c1 _]] (sync/push-transaction b/mobile-sync-config test-json nil empty-db entities-by-name nil (date-parser "2060-01-01T01:01:00.000Z"))
+              after-import (db/speculate b/mobile-sync-config empty-db transaction)
+              revision (db/get-sync-revision b/mobile-sync-config after-import)
+
+              ;; cut one user
+              [t2 [c2 _]] (sync/push-transaction b/mobile-sync-config {"FIGame" [{
+                                                                                  "active" 1,
+                                                                                  "createdAt" "2060-01-01T01:01:00.000Z",
+                                                                                  "updatedAt" "2060-01-01T01:01:01.000Z",
+                                                                                  "date" "2018-06-28T04:40:22.111Z",
+                                                                                  "gameDescription" "My cool games",
+                                                                                  "gender"  "U",
+                                                                                  "inThePast" 0,
+                                                                                  "sharedOnFacebook" 0,
+                                                                                  "shareOnFacebook" 0,
+                                                                                  "skillLevelRequired" "beginner",
+                                                                                  "teamName" "Gypsies",
+                                                                                  "title"  "Awesome game",
+                                                                                  "uuid"  "20840e26-72e7-4172-8f46-d6a724e5476c",
+                                                                                  "availableUsers" ["11111e26-72e7-4172-8f46-d6a724e5476c"],
+                                                                                  "location" "33330e26-72e7-4172-8f46-d6a724e5476c",
+                                                                                  "organiser" "44440e26-72e7-4172-8f46-d6a724e5476c",
+                                                                                  "sport" "55550e26-72e7-4172-8f46-d6a724e5476c",
+                                                                                  "participants" ["66661e26-72e7-4172-8f46-d6a724e5476c"]
+                                                                                  }]} nil after-import entities-by-name nil (date-parser "2060-01-01T01:01:01.000Z"))
+              snapshot2 (db/speculate b/mobile-sync-config after-import t2)
+              ;; Should only change gender, gameDescription and availibleUsers should remain unchanged
+              [t3 [c2 _]] (sync/push-transaction b/mobile-sync-config
+                                                 {"FIGame" [{
+                                                             "active" 1,
+                                                             "createdAt" "2060-01-01T01:01:00.000Z",
+                                                             "updatedAt" "2060-01-01T01:01:02.000Z",
+                                                             "date" "2018-06-28T04:40:22.111Z",
+                                                             "gameDescription" "My cool game",
+                                                             "gender"  "M",
+                                                             "inThePast" 0,
+                                                             "sharedOnFacebook" 0,
+                                                             "shareOnFacebook" 0,
+                                                             "skillLevelRequired" "beginner",
+                                                             "teamName" "Gypsies",
+                                                             "title"  "Awesome game",
+                                                             "uuid"  "20840e26-72e7-4172-8f46-d6a724e5476c",
+                                                             "availableUsers" ["00001e26-72e7-4172-8f46-d6a724e5476c", "11111e26-72e7-4172-8f46-d6a724e5476c"],
+                                                             "location" "33330e26-72e7-4172-8f46-d6a724e5476c",
+                                                             "organiser" "44440e26-72e7-4172-8f46-d6a724e5476c",
+                                                             "sport" "55550e26-72e7-4172-8f46-d6a724e5476c",
+                                                             "participants" ["66661e26-72e7-4172-8f46-d6a724e5476c"]
+                                                             "syncRevision" revision
+                                                             }]} nil snapshot2 entities-by-name nil (date-parser "2060-01-01T01:01:02.000Z"))]
+          
+          ;; First transaction removes one element from available users. It also changes description and updatedAt
+          
+          ;; 17592186045419 and 9 are abused here.
+
+          (is (= #{[:db/cas 17592186045419 :app/updatedAt #inst "2060-01-01T01:01:00.000-00:00" #inst "2060-01-01T01:01:01.000-00:00"] 
+                   [:db/retract 17592186045420 :FIGameAvailabilityIndication/game 17592186045419] 
+                   [:db/cas 17592186045419 :FIGame/gameDescription "My cool game" "My cool games"]} (set t2)))
+
+          ;; Second transaction detects conflict and resolves it by ignoring description and available users changes (since they are the same as they were). Only gender is altered.
+
+          ;; 17592186045419 is abused here
+
+          (is (= #{[:db/cas 17592186045419 :FIGame/gender "U" "M"] 
+                   [:db/cas 17592186045419 :app/updatedAt #inst "2060-01-01T01:01:01.000-00:00" #inst "2060-01-01T01:01:02.000-00:00"]} (set t3))))))))
+

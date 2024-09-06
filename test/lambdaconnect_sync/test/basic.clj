@@ -2,10 +2,22 @@
   (:require  [datomic.api :as d]
              [clojure.spec.gen.alpha :as gen]
              [lambdaconnect-sync.db-drivers.datomic :as datomic-driver]
-             [lambdaconnect-model.core :as mp]))
+             [lambdaconnect-model.core :as mp]
+             [clojure.data.json :refer [read-str]]))
+
+
+(defn load-model-fixture [filename]
+  (str "env/test/resources/" filename))
+
+(defn slurp-fixture [filename] 
+  (->> filename
+       (str "env/test/resources/")
+       slurp
+       read-str))
+
 
 (defn get-mobile-sync-config []
-  {:log (constantly nil)
+  {:log nil
    :as-of d/as-of
    :pull d/pull
    :pull-many d/pull-many

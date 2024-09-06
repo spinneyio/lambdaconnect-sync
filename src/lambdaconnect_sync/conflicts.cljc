@@ -1,7 +1,10 @@
 (ns lambdaconnect-sync.conflicts
   (:require [clojure.set :refer [difference union]]
             [lambdaconnect-sync.db :as db]
-            [lambdaconnect-model.core :as mp]))
+            [lambdaconnect-model.core :as mp]
+            #?(:clj [lambdaconnect-model.utils :refer [log-with-fn]])
+            [clojure.pprint :refer [pprint]])
+  #?(:cljs (:require-macros [lambdaconnect-model.utils :refer [log-with-fn]])))
 
 (defn override-creation-attributes
   "This function is applied to a freshly created object to set up its initial state. It is executed after the object was decoded from the input JSON.
@@ -33,6 +36,7 @@
                                     (if (and old-object (not (string? (:db/id old-object)))) ; old-object can be a freshly created one - then there is no conflict possible 
                                       (if-let [base-snapshot (db/as-of config snapshot sync-revision)]
                                         (if-let [base-object (mp/replace-inverses (first (db/get-objects-by-ids config entity [(:db/id old-object)] base-snapshot true)) entity true)]
+                                          
                                         ; so here we go, an update operation and three objects to compare:
                                         ; 
                                         ; base-object - what the user has last seen - the original value (for them)
@@ -46,7 +50,8 @@
                                         ;        --> We take updatedAt (before mangling) from new-object and old-object - the one whitch is more recent wins
                                         ;     b) If it is a to-many relationship
                                         ;        --> We take A = new-object \ base-object, B = base-object \ new-object and take:
-                                        ;                (old-object u A) \ B 
+                                        ;                (old-object u A) \ B
+ 
                                           (merge
                                            (into {} (map (fn [attr-or-to-one]
                                                            (let [kw (mp/datomic-name attr-or-to-one)]
@@ -57,7 +62,7 @@
                                                                         (= (:app/uuid (kw base-object)) ; 1. (relationship)
                                                                            (:app/uuid (kw new)))))
                                                                  (do
-                                                                   ((:log config) (str (:name attr-or-to-one) " - Conflict resolution case I - selected old: '" (kw base-object) "', '" (kw new) "', '" (kw old-object) "'"))
+                                                                   (log-with-fn (:log config) (str "!!! " (:name attr-or-to-one) " - Conflict resolution case I - selected old. Base: '" (kw base-object) "', New: '" (kw new) "', Old: '" (kw old-object) "' -- SELECTING '" (kw old-object) "'"))
                                                                    [kw (kw old-object)]) ; 1.
                                                                  (let [old-updated (:app/updatedAt old-object)
                                                                        new-updated (:app/updatedAt new)]
@@ -67,10 +72,10 @@
                                                                           :cljs (> old-updated new-updated))
                                                                      ;; 2. a)
                                                                      (do
-                                                                       ((:log config) (str (:name attr-or-to-one) " - Conflict resolution case IIa - selected old: '" (kw base-object) "', '" (kw new) "', '" (kw old-object) "'"))
+                                                                       (log-with-fn (:log config) (str "!!! " (:name attr-or-to-one) " - Conflict resolution case IIa - selected old. Base: '" (kw base-object) "', New: '" (kw new) "', Old: '" (kw old-object) "' -- SELECTING '" (kw old-object) "'"))
                                                                        [kw (kw old-object)])
                                                                      (do
-                                                                       ((:log config) (str (:name attr-or-to-one) " - Conflict resolution case IIa - selected new: '" (kw base-object) "', '" (kw new) "', '" (kw old-object) "'"))
+                                                                       (log-with-fn (:log config) (str  "!!! " (:name attr-or-to-one) " - Conflict resolution case IIa - selected new. Base: '" (kw base-object) "', New: '" (kw new) "', Old: '" (kw old-object) "' -- SELECTING '" (kw new) "'"))
                                                                        [kw (kw new)])))))))
                                                          (concat (vals (:attributes entity)) (filter #(not (:to-many %)) (vals (:relationships entity))))))
                                            (into {} (map (fn [rel-to-many]
@@ -81,14 +86,10 @@
                                                                      new-set (set (kw new))
                                                                      A (difference new-set base-set)
                                                                      B (difference base-set new-set)]
-                                                                 ((:log config) (str (:name rel-to-many) " - Conflict resolution case IIb: " (vec (kw base-object)) ", " (vec (kw new)) ", " (vec (kw old-object))))
-                                                                 ((:log config) (str (:name rel-to-many) " - SETS: " old-set ", " base-set ", " new-set ", " A ", " B))
+                                                                 (log-with-fn (:log config) (str  "!!! " (:name rel-to-many) " - Conflict resolution case IIb - selected (old-object u A) \\ B. Base: " (vec (kw base-object)) ", New: " (vec (kw new)) ", Old: " (vec (kw old-object)) " -- SELECTING "  (vec (difference (union old-set A) B))))
+                                                                 (log-with-fn (:log config) (str  "!!! " (:name rel-to-many) " - SETS: Old: " old-set ", Base: " base-set ", New: " new-set ", A: " A ", B: " B))
                                                                  [kw (vec (difference (union old-set A) B))])))) (filter :to-many (vals (:relationships entity))))))
                                           new) new) new) new))]
-    ((:log config) (str "Before conflict resolution: " new-object))
-    ((:log config) (str "After conflict resolution: " (-> new-object
-                                                          resolve-field-conflicts
-                                                          update-active)))
     (-> new-object
         resolve-field-conflicts
         update-active)))

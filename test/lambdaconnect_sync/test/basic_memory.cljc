@@ -22,7 +22,7 @@
                 (js->clj))))
 
 (defn get-mobile-sync-config []
-  {:log (constantly nil) ;println
+  {:log nil; println
    })
 
 (def mobile-sync-config (let [c (get-mobile-sync-config)]

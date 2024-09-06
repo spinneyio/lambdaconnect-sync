@@ -8,10 +8,12 @@
             [lambdaconnect-sync.db :as db]
             [lambdaconnect-model.scoping :as scoping]
             [clojure.pprint :refer [pprint]]
+            #?(:clj [lambdaconnect-model.utils :refer [log-with-fn]])
             [lambdaconnect-sync.integrity-constraints :as i]
             [lambdaconnect-sync.db-drivers.datomic :as datomic-driver]
             [lambdaconnect-sync.conflicts :as conflicts])
-  #?(:cljs (:require-macros [lambdaconnect-model.macro :refer [future]])))
+  #?(:cljs (:require-macros [lambdaconnect-model.macro :refer [future]]
+                            [lambdaconnect-model.utils :refer [log-with-fn]])))
 
 (def pmap mu/pmap)
 
@@ -101,13 +103,13 @@
 
      ; Fetch objects that are referred to objects from the input
         result (u/join-maps [@phase1 @phase2 @phase3 phase4])]
-    ((:log config) "-------------- OBJS TO FETCH ------------------")
-    ((:log config) "PHASE1: " @phase1)
-    ((:log config) "PHASE2: " @phase2)
-    ((:log config) "PHASE3: " @phase3)
-    ((:log config) "PHASE4: " phase4)
-    ((:log config) "RESULT: " result)
-    ((:log config) "-------------- /OBJS TO FETCH ------------------")
+    (log-with-fn (:log config) "-------------- OBJS TO FETCH ------------------")
+    (log-with-fn (:log config) "PHASE1: " @phase1)
+    (log-with-fn (:log config) "PHASE2: " @phase2)
+    (log-with-fn (:log config) "PHASE3: " @phase3)
+    (log-with-fn (:log config) "PHASE4: " phase4)
+    (log-with-fn (:log config) "RESULT: " result)
+    (log-with-fn (:log config) "-------------- /OBJS TO FETCH ------------------")
     result))
 
 
@@ -139,10 +141,10 @@
                                                                   (t/unique-datomic-identifier entity) true}])
                                                               (filter #(not (existing-uuids %)) uuids)))])) 
                                objects-to-fetch))]
-    ((:log config) "-------------- FETCHED: ------------------")
-    ((:log config) "CREATED: " created)
-    ((:log config) "EXISTING: " existing)
-    ((:log config) "-------------- /FETCHED: ------------------")
+    (log-with-fn (:log config) "-------------- FETCHED: ------------------")
+    (log-with-fn (:log config) "CREATED: " created)
+    (log-with-fn (:log config) "EXISTING: " existing)
+    (log-with-fn (:log config) "-------------- /FETCHED: ------------------")
     [created existing]))
 
 (defn- cas [db-id attrib old-value new-value]
@@ -158,11 +160,11 @@
   "simple case - this object is responsible for maintaining the relationship"
   [config _snapshot db-id relationship orig-value new-value entities-by-name target-objects source-objects]
   (when true
-    ((:log config) "---------------------- LEFT ------------------")
-    ((:log config) (:entity-name relationship) " - " (:name relationship))
-    ((:log config) "db-id " db-id " orig-value " orig-value " new value " new-value)
-                                        ;    ((:log config) "TARGET OBJECTS " target-objects)
-                                        ;   ((:log config) "SOURCE OBJECTS " source-objects)
+    (log-with-fn (:log config) "---------------------- LEFT ------------------")
+    (log-with-fn (:log config) (:entity-name relationship) " - " (:name relationship))
+    (log-with-fn (:log config) "db-id " db-id " orig-value " orig-value " new value " new-value)
+                                        ;    (log-with-fn (:log config) "TARGET OBJECTS " target-objects)
+                                        ;   (log-with-fn (:log config) "SOURCE OBJECTS " source-objects)
     )
   (let [result
         (if (:to-many relationship)
@@ -201,17 +203,17 @@
                           [:db/retract old-related rel-name new])]))
               [])))]
     (when true
-      ((:log config) "RESULT: " result)
-      ((:log config) "---------------------- /LEFT ------------------"))
+      (log-with-fn (:log config) "RESULT: " result)
+      (log-with-fn (:log config) "---------------------- /LEFT ------------------"))
     result))
 
 (defn- right-relationship-transaction
   "horrible case - we need to see into the objects that reference us:"
   [config snapshot db-id relationship orig-value new-value entities-by-name rel-objects uuid]
   (when true
-    ((:log config) "---------------------------- RIGHT ------------------------------")
-    ((:log config) (str "db-id: '" db-id "' relationship: '" (:name relationship) "' orig-value: '" orig-value "' new value: '" new-value "'"))
-;    ((:log config) "TARGET OBJECTS " rel-objects)
+    (log-with-fn (:log config) "---------------------------- RIGHT ------------------------------")
+    (log-with-fn (:log config) (str "db-id: '" db-id "' relationship: '" (:name relationship) "' orig-value: '" orig-value "' new value: '" new-value "'"))
+;    (log-with-fn (:log config) "TARGET OBJECTS " rel-objects)
     )
 
   (let [result
@@ -259,8 +261,8 @@
               transactions)
             :else []))]
     (when true
-      ((:log config) "RESULT: " result)
-      ((:log config) "---------------------------- /RIGHT ------------------------------"))
+      (log-with-fn (:log config) "RESULT: " result)
+      (log-with-fn (:log config) "---------------------------- /RIGHT ------------------------------"))
     result))
 
 (defn- check-for-duplicates
@@ -305,22 +307,22 @@
                          concat
                          (pmap (fn [object]
                                  (let [db-object (get-in objects [entity-name (:app/uuid object)])
-                                       _ ((:log config) "DB OBJECT: " db-object)
-                                       _ ((:log config) "OBJECT:: " object)
+                                       _ (log-with-fn (:log config) "DB OBJECT: " db-object)
+                                       _ (log-with-fn (:log config) "OBJECT:: " object)
                                        db-id (:db/id db-object)
                                        db-uuid (:app/uuid db-object)
                                         ; --------- attributes -------
 
                                        conflict-resolved-object (conflicts/resolve-modification-conflicts config db-object object entity internal-user snapshot)
 
-                                       _ ((:log config) "CONFLICT R:: " conflict-resolved-object)
+                                       _ (log-with-fn (:log config) "CONFLICT R:: " conflict-resolved-object)
 
                                        overriden-object ((if (created-entities-uuids db-uuid)
                                                            conflicts/override-creation-attributes
                                                            conflicts/override-update-attributes)
                                                          conflict-resolved-object internal-user snapshot entity now)
 
-                                       _ ((:log config) "OVERRIDEN R:: " overriden-object)
+                                       _ (log-with-fn (:log config) "OVERRIDEN R:: " overriden-object)
 
                                        db-a (select-keys overriden-object attribute-names)
                                        db-s-a (select-keys overriden-object special-attribute-names)
@@ -348,10 +350,10 @@
                                                            datomic-relationship (get (:datomic-relationships entity) (name rel-name))
                                                            target-objects (get objects (:destination-entity relationship))
                                                            source-objects (get objects (:name entity))]
-                                                       _ ((:log config) "---------------")
-                                                       _ ((:log config) "TRANS ORIG:: " orig-value)
-                                                       _ ((:log config) "TRANS DBO-R:: " dbo-r)
-                                                       _ ((:log config) "TRANS TARGET-O:: " target-objects)
+                                                       _ (log-with-fn (:log config) "---------------")
+                                                       _ (log-with-fn (:log config) "TRANS ORIG:: " orig-value)
+                                                       _ (log-with-fn (:log config) "TRANS DBO-R:: " dbo-r)
+                                                       _ (log-with-fn (:log config) "TRANS TARGET-O:: " target-objects)
                                                        (if datomic-relationship
                                         ; simple case - this object is responsible for maintaining the relationship
                                                          (left-relationship-transaction config snapshot db-id datomic-relationship orig-value rel-value entities-by-name target-objects source-objects)
@@ -373,9 +375,9 @@
   ([config incoming-json internal-user snapshot entities-by-name scoped-push-input-for-user]
    (internal-push-transaction config incoming-json internal-user snapshot entities-by-name scoped-push-input-for-user #?(:clj (java.util.Date.) :cljs (js/Date.))))
   ([config incoming-json internal-user snapshot entities-by-name scoped-push-input-for-user now]
-   ((:log config) "=========---------===========--------- PUSH ----------============-----------============")
-   ((:log config) "INCOMING: " incoming-json)
-   ((:log config) "%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%")
+   (log-with-fn (:log config) "=========---------===========--------- PUSH ----------============-----------============")
+   (log-with-fn (:log config) "INCOMING: " incoming-json)
+   (log-with-fn (:log config) "%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%")
    (let [; Step one - mapping of the incoming json into our model + validation
          mapped-input (into {}
                             (map (fn [[entity-name objects]]
@@ -408,7 +410,7 @@
            created-uuids (set (map :app/uuid pure-created-objects))
            updated-all-objects (update-changed-objects-transaction config internal-user all-objects input entities-by-name snapshot created-uuids now)
            transaction (concat pure-created-objects (vec (set updated-all-objects)))
-           _ ((:log config) "FULL TRANSACTION: " transaction)
+           _ (log-with-fn (:log config) "FULL TRANSACTION: " transaction)
            [foreign-keys-in-db response invalid-uuids] (i/check-foreign-key config input snapshot (i/relations entities-by-name))
            error-string (str "You are going to create object refering to non existing entity. \n"
                              "Entities with invalid relations: "  response " \n"
@@ -419,10 +421,10 @@
        (check-for-duplicates config input entities-by-name snapshot)       
        (if foreign-keys-in-db
          (do 
-           ((:log config) "=========---------===========--------- /PUSH ----------============-----------============")
+           (log-with-fn (:log config) "=========---------===========--------- /PUSH ----------============-----------============")
            [transaction [created-objects updated-objects] scoped-uuids])
          (do
-           ((:log config) error-string)
+           (log-with-fn (:log config) error-string)
            (throw (ex-info (str "You are going to create object refering to non existing entity. \n" (dissoc error-info :input-after-scope)) error-info))))))))
 
 ; -------------------- scope push helpers ----------------------
@@ -545,9 +547,9 @@
      (if (not @scoped-tags) [transaction [created-objects updated-objects] {:rejected-objects {}
                                                                             :rejected-fields {}}]
          (let ;scoping starts here
-          [_ ((:log config) (str "----> ORIGINAL TRANSACTION: " (vec transaction)))
-           _ ((:log config) (str "---------------------------------------------"))
-           _ ((:log config) (str "ALL TAGS: " tags-by-ids))
+          [_ (log-with-fn (:log config) (str "----> ORIGINAL TRANSACTION: " (vec transaction)))
+           _ (log-with-fn (:log config) (str "---------------------------------------------"))
+           _ (log-with-fn (:log config) (str "ALL TAGS: " tags-by-ids))
 
 
            constants (:constants scoping-edn)
@@ -571,7 +573,7 @@
           
            permissions-for-object (memoize (fn [uuid] ; a helper that takes an uuid and returns the merged permissions map (an object can belong to multiple tags)
                                              (let [tags (get tags-by-ids uuid)
-                                                   _ ((:log config) (str "PERMISSIONS TAGS for UUID: " uuid " - " tags))
+                                                   _ (log-with-fn (:log config) (str "PERMISSIONS TAGS for UUID: " uuid " - " tags))
                                                    permissions (map #(->> % 
                                                                           (get scoping-edn)
                                                                           (:permissions)                                                                  
@@ -579,8 +581,8 @@
                                                    entity (when (seq tags) (get entities-by-name (last (re-find #"(.*)\..+" (name (first tags))))))
                                                    result (if entity (combined-permissions-for-object permissions entity)
                                                               {:create false :modify false :writable-fields []})]
-                                               ((:log config) (str "PERMISSIONS to process: " uuid " - " (vec permissions)))
-                                               ((:log config) (str "PERMISSIONS result: " uuid " - " (vec result)))
+                                               (log-with-fn (:log config) (str "PERMISSIONS to process: " uuid " - " (vec permissions)))
+                                               (log-with-fn (:log config) (str "PERMISSIONS result: " uuid " - " (vec result)))
                                                result)))
 
            field-replacements-for-object (memoize (fn [uuid] ; a helper that takes an uuid and returns the merged replacements map (an object can belong to multiple tags)
@@ -634,7 +636,7 @@
 
            rejected-objects (mu/map-keys #(filter (fn [o] (let [permissions (or (permissions-for-object (:app/uuid o)) {})
                                                                  {:keys [modify create] :or {modify false create false}} permissions]
-                                                             ((:log config) (str "REJECTING? " (:app/uuid o)  permissions))
+                                                             (log-with-fn (:log config) (str "REJECTING? " (:app/uuid o)  permissions))
                                                              (cond (created-uuids (:app/uuid o)) (not create)
                                                                    (updated-uuids (:app/uuid o)) (not modify)
                                                                    :else (assert false (str "Logic error - object not found" o))))) %) 
@@ -642,7 +644,7 @@
 
 
            rejected-id-candidates (mu/map-keys #(set (map :db/id %)) rejected-objects)
-           _ ((:log config) "Reject candidates: " rejected-id-candidates)
+           _ (log-with-fn (:log config) "Reject candidates: " rejected-id-candidates)
 
            [transaction-after-object-rejections true-rejection-ids rejected-statements-by-id] 
            (let [rejected-ids (apply union (vals rejected-id-candidates))
@@ -682,7 +684,7 @@
                                            (and modify (or protected-fields writable-fields (seq field-replacements))))) %)
                                      (mu/map-keys #(if (empty? %) [] (vals %)) updated-objects))
 
-           _ ((:log config) "Objects to reject fields: " objects-to-filter-fields)
+           _ (log-with-fn (:log config) "Objects to reject fields: " objects-to-filter-fields)
 
            excise-field-from-transaction (fn [entity object-id transaction field-name]  ; object-id is assumed to be internal db 
                                            ;; Returns transaction with operations modifying a field against permissions excised.
@@ -713,7 +715,7 @@
                                                                           :db.fn/cas (let [[_ id datomic-field old-target new-target] entry] (check-entry op id datomic-field old-target new-target))
                                                                           true)]
                                                              (when (not result) 
-                                                               ((:log config) (str "!!! Excising field: " field-name " - " object-id " entry: " entry)))
+                                                               (log-with-fn (:log config) (str "!!! Excising field: " field-name " - " object-id " entry: " entry)))
                                                              result
                                                              ))) transaction)))
 
@@ -731,7 +733,7 @@
                                            ;; We can add additional logic here to not report rejections of fields that happened when 
                                            ;; modifying scoped relations. 
                                            (field-replacements field))
-                           ((:log config) (str "Silently removed replacement: " t " - " new-transaction " - " field " - " field-replacements)))
+                           (log-with-fn (:log config) (str "Silently removed replacement: " t " - " new-transaction " - " field " - " field-replacements)))
                          (recur new-transaction
                                 entity
                                 object
@@ -746,21 +748,21 @@
                                 (or excised? excised-anything?)))
                        (do
                         (when excised-anything? 
-                          ((:log config) (str "Excised something: " object " - " (doall t) " - " rejections)))
+                          (log-with-fn (:log config) (str "Excised something: " object " - " (doall t) " - " rejections)))
                        [t rejections excised-anything?])))
                    
                    (reject-objects [tx entity remaining-objects rejections]
                      (if-let [object (first remaining-objects)]
                        (let [permissions (or (permissions-for-object (:app/uuid object)) {})
                              field-replacements (or (field-replacements-for-object (:app/uuid object)) #{})
-                             _ ((:log config) (str "Looking at rejecting from: " (:app/uuid object) " permissions: - " permissions " - " field-replacements))
+                             _ (log-with-fn (:log config) (str "Looking at rejecting from: " (:app/uuid object) " permissions: - " permissions " - " field-replacements))
                              {:keys [protected-fields writable-fields] :or {protected-fields #{} writable-fields #{}}} permissions
                              fields-to-remove (vec (union field-replacements
                                                           (if (seq protected-fields) protected-fields                                                            
                                                               (difference
                                                                (set (concat (keys (:attributes entity)) (keys (:relationships entity))))
                                                                writable-fields))))
-                             _ ((:log config) (str "Fields to remove: " (doall fields-to-remove)))
+                             _ (log-with-fn (:log config) (str "Fields to remove: " (doall fields-to-remove)))
                              [new-transaction new-rejections excised-anything?] 
                              (reject-fields tx entity object fields-to-remove rejections field-replacements false)]
                          (recur new-transaction
@@ -792,23 +794,23 @@
                                                                    (= :app/updatedAt (nth (first v) 2)))))
                                           (keys)
                                           (set))
-                   _ ((:log config) (str "REMOVING updatedAt only: " objects-to-excise))
+                   _ (log-with-fn (:log config) (str "REMOVING updatedAt only: " objects-to-excise))
                    transaction (filter #(not (seq (clojure.set/intersection objects-to-excise (objects-from-entry %)))) transaction)
 
                    ids-in-transaction (apply union (map objects-from-entry transaction))
                    filtered-created-objects (mu/map-keys #(into {} (filter (fn [[k o]] (ids-in-transaction (:db/id o))) %)) created-objects)
                    filtered-updated-objects (mu/map-keys #(into {} (filter (fn [[k o]] (ids-in-transaction (:db/id o))) %)) updated-objects)]
-               ((:log config) "-----------------------------")
-               ((:log config) (str "REJECTIONS: " rejections))
-               ((:log config) (str "FINAL TRANSACTION: " (vec transaction)))
-               ((:log config) "-----------------------------")
-               ((:log config) (str "OBJECTS:" filtered-created-objects filtered-updated-objects))
-               ((:log config) "=======================================")
+               (log-with-fn (:log config) "-----------------------------")
+               (log-with-fn (:log config) (str "REJECTIONS: " rejections))
+               (log-with-fn (:log config) (str "FINAL TRANSACTION: " (vec transaction)))
+               (log-with-fn (:log config) "-----------------------------")
+               (log-with-fn (:log config) (str "OBJECTS:" filtered-created-objects filtered-updated-objects))
+               (log-with-fn (:log config) "=======================================")
                ;; we have removed all that was needed in the former steps
                [transaction [filtered-created-objects filtered-updated-objects] rejections])
              (do 
-               ((:log config) "Recurring because not all rejections have been complete.")
-               ((:log config) "Rejections: " rejections)
+               (log-with-fn (:log config) "Recurring because not all rejections have been complete.")
+               (log-with-fn (:log config) "Rejections: " rejections)
                (recur config incoming-json internal-user snapshot entities-by-name original-scoping-edn 
                       [transaction-after-field-rejections [created-objects updated-objects] {}]
                       {:rejected-objects (merge-with union rejected-object-info (:rejected-objects rejections))

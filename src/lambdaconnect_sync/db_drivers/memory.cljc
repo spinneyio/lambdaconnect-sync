@@ -599,8 +599,7 @@
     (:newest-snapshot-idx database))
 
   (as-of [_ database sync-revision]
-    (let [;; I am not 100% positive if the convention is "sync revision" or "sync revision - 1" here. 
-          as-of-revision (->> database
+    (let [as-of-revision (->> database
                               :snapshots
                               keys
                               (filter #(<= % sync-revision))
