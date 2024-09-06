@@ -1,61 +1,63 @@
 (ns lambdaconnect-sync.db-interface)
 
-;; entity or relationship refers to objects taken from entities-by-name 
 
 (defprotocol IDatabaseDriver
+  "Database driver protocol. Allows lambdaconnect-sync to interact with arbitrary database.
+   Entity or relationship refers to objects taken from entities-by-name."
+  (speculate [this snapshot transaction]
+    "Returns a new snapshot with transaction applied to it (temporarily)")
+  
+  (objects-by-ids [this snapshot entity ids fetch-inverses?]
+    "Fetches objects that match the entity and ids (as any sequence). Objects that do not conform to entity will not be returned.
+     The format is:
 
-  ;; Returns a new snapshot with transaction applied to it (temporarily)
-  (speculate [this snapshot transaction])
+     {:app/uuid #\"some-uuid\"
+      :app/createdAt #some-date
+      :app/updatedAt #some-date
+      :NOUser/someAttribute #some-value
+      :NOUser/someRelationshipToMany [{:app/uuid #uuid :db/id #id} ...]
+      :NOUser/someRelationshipToOne {:app/uuid #uuid :db/id #id}
+      :NOLocation/_thisIsSomeInverseRelationshipToMany [{:app/uuid #uuid :db/id #id} ...] ;; if fetch-inverse? is true
+      :NOLocation/_thisIsSomeInverseRelationshipToOne [{:app/uuid #uuid :db/id #id}] ;; if fetch-inverse? is true. Note that inverses are a collection even in to-one case.
+     }
 
-  ;; Fetches objects that match the endity and ids (as any sequence).
-  ;; The format is 
-  ;; {:app/uuid #"some-uuid"
-  ;;  :app/createdAt #some-date
-  ;;  :app/updatedAt #some-date
-  ;;  :NOUser/someAttribute #some-value
-  ;;  :NOUser/someRelationshipToMany [{:app/uuid #uuid :db/id #id} ...]
-  ;;  :NOUser/someRelationshipToOne {:app/uuid #uuid :db/id #id}
-  ;;  :NOLocation/_thisIsSomeInverseRelationshipToMany [{:app/uuid #uuid :db/id #id} ...] ;; if fetch-inverse? is true
-  ;;  :NOLocation/_thisIsSomeInverseRelationshipToOne [{:app/uuid #uuid :db/id #id}] ;; if fetch-inverse? is true
-  ;; }
-  (objects-by-ids [this snapshot entity ids fetch-inverses?])
+     Please note that it is not guaranteed what collection holds relationships. It might be a vector, list, lazy coll or even a set (since relationships are never ordered).")
+  
+  (objects-by-uuids [this snapshot entity uuids fetch-inverses?]
+    "Fetches objects that match the entity and uuids. Objects that do not conform to entity will not be returned. 
+     Returns them in the same format as objects-by-ids.")
+  
+  (check-uuids-for-entity [this snapshot entity-name uuids]
+    "Returns a subset of uuids (uuids is a sequence, retval is a set) that belong to given entity.")  
+  
+  (id-for-uuid [this snapshot entity uuid]
+    "Returns db id for uuid/entity pair, or nil if there is any mismatch.")
+  
+  (sync-revision [this snapshot]
+    "Returns sync revision of a snapshot.")
 
-  ;; Fetches objects that match the enetity and uuids. Returns them in the same format as 
-  ;; objects-by-ids
-  (objects-by-uuids [this snapshot entity uuids fetch-inverses?])
+  (as-of [this snapshot sync-revision]
+    "Returns database as if it was viewed through given sync revision.")
 
-  ;; Returns a subset of uuids (uuids is a sequence, retval is a set) that belong to given entity.
-  (check-uuids-for-entity [this snapshot entity-name uuids])  
+  (misclassified-objects [this snapshot entity uuids]
+    "Returns objects (in the form given by objects-by-ids with inverse:false) 
+     that do not belong to entity but are found in uuids map.")
 
-  ;; Returns db id for uuid/entity pair
-  (id-for-uuid [this snapshot entity uuid])
+  (related-objects [this snapshot relationship uuids]
+    "For a given relationship and list of uuids, 
+     returns a set of uuids (or nil) that represent objects refering to the 
+     ones in uuids collection through relationship.")
 
-  ;; Returns sync revision of a snapshot
-  (sync-revision [this snapshot])
+  (referenced-objects [this snapshot relationship uuids]
+    "For a given relationship and list of uuids, 
+     returns a set of uuids (or nil) that represent objects referenced by the 
+     ones in uuids collection through relationship.")
 
-  ;; Returns database as if it was viewed through given sync revision
-  (as-of [this snapshot sync-revision])
+  (changed-ids [this snapshot entity sync-revision scoped-ids]
+    "Returns internal ids of entities that have been modified 
+     since sync-revision version of db. If scoped-ids is present, only a subset of 
+     scoped-ids is returned. ")
 
-  ;; Returns objects (in the form given by objects-by-ids with inverse:false) 
-  ;; that do not belong to entity but are found in uuids map
-  (misclassified-objects [this snapshot entity uuids])
-
-  ;; For a given relationship and list of uuids, 
-  ;; returns a set of uuids (or nil) that represent objects refering to the 
-  ;; ones in uuids collection through relationship.
-  (related-objects [this snapshot relationship uuids])
-
-  ;; For a given relationship and list of uuids, 
-  ;; returns a set of uuids (or nil) that represent objects referenced by the 
-  ;; ones in uuids collection through relationship.
-
-  (referenced-objects [this snapshot relationship uuids])
-
-  ;; Returns internal ids of entities that have been modified 
-  ;; since sync-revision version fo db. If scoped-ids is present, only a subset of 
-  ;; scoped-ids is returned
-  (changed-ids [this snapshot entity sync-revision scoped-ids])
-
-  ;; Returns uuids for given internal ids
-  (uuids-for-ids [this snapshot ids]))
+  (uuids-for-ids [this snapshot ids] 
+    "Returns uuids for given internal ids."))
 

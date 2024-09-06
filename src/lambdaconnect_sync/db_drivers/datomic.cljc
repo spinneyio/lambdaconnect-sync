@@ -110,6 +110,7 @@
                                   ($changes or
                                             [?e _ _ ?tx]
                                             [_ _ ?e ?tx])
+                                  ;; This is not compatible with datomic-cloud. TODO: modify to make compatible
                                   [(lambdaconnect-sync.db-drivers.datomic/invoke ?tx->t ?tx) ?t]
                                   [(>= ?t ?since)]]
                                 db-now db-changes name sync-revision scoped-ids (:tx->t config))
@@ -121,6 +122,7 @@
                                   ($changes or
                                             [?e _ _ ?tx]
                                             [_ _ ?e ?tx])
+                                  ;; This is not compatible with datomic-cloud. TODO: modify to make compatible
                                  [(lambdaconnect-sync.db-drivers.datomic/invoke ?tx->t ?tx) ?t]
                                   [(>= ?t ?since)]]
                                 db-now db-changes name sync-revision (:tx->t config)))]
