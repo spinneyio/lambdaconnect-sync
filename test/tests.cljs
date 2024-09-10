@@ -5,6 +5,7 @@
      [lambdaconnect-sync.test.push-memory]
      [lambdaconnect-sync.test.push-foodie-memory]
      [lambdaconnect-sync.test.pull-memory]
+     [lambdaconnect-sync.test.benchmark]
      
      [cljs.analyzer.api :as ana-api]    
      [clojure.pprint :refer [pprint]]
