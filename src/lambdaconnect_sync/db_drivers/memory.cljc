@@ -38,7 +38,7 @@
                                        :lambdaconnect-model.data-xml/entity-name))
 
 
-(s/def ::keywords-without-inverses-by-name (s/map-of string? (s/coll-of (s/and keyword? namespace))))
+(s/def ::keywords-without-inverses-by-name (s/map-of string? (s/coll-of qualified-keyword?)))
 
 (s/def ::snapshot 
   (s/keys :req-un 
@@ -66,16 +66,18 @@
 (defmulti transaction-entry-type first)
 
 (defmethod transaction-entry-type :db/add [_]
-  (s/tuple #{:db/add} ::transaction-entity-id keyword? any?))
+  (s/tuple #{:db/add} ::transaction-entity-id qualified-keyword? any?))
 
+
+;; Please note - we do not allow retracts with no value (this is different from datomic).
 (defmethod transaction-entry-type :db/retract [_]
-  (s/tuple #{:db/retract} ::entity-id keyword? any?))
+  (s/tuple #{:db/retract} ::entity-id qualified-keyword? some?))
 
 (defmethod transaction-entry-type :db/cas [_]
-  (s/tuple #{:db/cas} ::transaction-entity-id keyword? any? any?))
+  (s/tuple #{:db/cas} ::transaction-entity-id qualified-keyword? any? some?))
 
 (defmethod transaction-entry-type :db.fn/cas [_]
-  (s/tuple #{:db.fn/cas} ::transaction-entity-id keyword? any? any?))
+  (s/tuple #{:db.fn/cas} ::transaction-entity-id qualified-keyword? any? some?))
 
 
 ;; At this stage we do not support entity retraction - it is not needed for synchro and since we have the "active" flag not needed in apps too.
@@ -83,12 +85,14 @@
 ;; (defmethod transaction-entry-type :db/retractEntity [_]
 ;;   (s/tuple #{:db/retractEntity} ::entity-id))
 
+;; Compound entries must have a :app/uuid key with either string (new value) or uuid (existing value).
+;; This is different from datomic spec, which is broader and allows uuids as new id's as well. Synchro follows my guideline.
 
-(s/def ::transcation-creation-entry (s/map-of keyword? any?))
+(s/def ::transaction-compound-entry (s/map-of qualified-keyword? any?))
 
 (s/def ::transaction-entry (s/or 
                             :fact (s/multi-spec transaction-entry-type first)
-                            :creation ::transcation-creation-entry))
+                            :creation ::transaction-compound-entry))
 
 
 (s/def ::transaction (s/coll-of ::transaction-entry))
