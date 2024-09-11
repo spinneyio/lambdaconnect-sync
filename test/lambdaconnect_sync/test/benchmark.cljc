@@ -8,6 +8,7 @@
             [lambdaconnect-model.scoping :as scoping]         
             [lambdaconnect-model.graph-generator :as graph]
             [lambdaconnect-sync.db-drivers.memory :as lsm]
+            [taoensso.tufte :as tufte :refer [defnp p profiled profile]]
             #?@(:cljs [[clojure.test.check.generators]
                        [cljs.spec.gen.alpha :as gen]
                        [cljs.test :refer [deftest testing is use-fixtures] :as t]
@@ -30,6 +31,7 @@
 
 
 (defn test-sync-performance [vertices edges]
+  (tufte/add-basic-println-handler! {})
   (println "Benchmarking graph processing. Using " vertices "vertices and" edges "edges.")
   (let [config {:log nil 
                 :driver (lsm/->MemoryDatabaseDriver nil)}
@@ -46,9 +48,15 @@
                          :FILocation/rightHash   #(s/gen #{"aaa"})})
         [test-graph gen-time] (bench (graph/generate-entity-graph ebn :vertices vertices :edges edges))
         _ (println "Took" gen-time "seconds to generate graph." )
-        [[tx] push-gen-time] (bench (sync/push-transaction config test-graph nil db ebn nil now))
-        _ (println "Took" push-gen-time "seconds to generate push." )
-        [new-db speculation-time] (bench (db/speculate config db tx))
+        [[tx] push-gen-time] (bench (first (profile {} (mapv (fn [_] (sync/push-transaction {:config config 
+                                                                                             :incoming-json test-graph 
+                                                                                             :snapshot db 
+                                                                                             :entities-by-name ebn 
+                                                                                             :now now})) 
+                                                             (range 5)))))
+        push-gen-time (/ push-gen-time 5)
+        _ (println "Took" push-gen-time "seconds to generate push.")
+        [new-db speculation-time] (bench (profile {} (p :whole-speculate (db/speculate config db tx))))
         _ (println "Took" speculation-time "seconds to integrate push.")
         [pull-output pull-time] (bench (sync/pull config (into {} (map (fn [n] [n 0]) (keys ebn))) nil new-db ebn nil))
         _ (println "Took" pull-time "seconds to generate pull.")
@@ -60,7 +68,7 @@
 
 (deftest benchmarks
   (testing "2000 5000"
-    (test-sync-performance 5000 20000))
+    (test-sync-performance 2000 5000))
   (testing "10000 40000"
     (test-sync-performance 10000 100000)))
 

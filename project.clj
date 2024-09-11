@@ -7,6 +7,7 @@
                  [org.clojure/clojure "1.11.4"]
                  [org.clojure/test.check "1.1.1"]
                  [io.spinney/lambdaconnect-model "1.0.24"]
+                 [com.taoensso/tufte "2.6.3"]
                  [thheller/shadow-cljs "2.28.12"]]
   :target-path "target/%s"
   :profiles {:uberjar {:aot :none

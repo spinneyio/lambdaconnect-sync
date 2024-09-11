@@ -77,9 +77,9 @@
            "participants"  ["66661e26-72e7-4172-8f46-d6a724e5476c"]}]
       (testing "Wrong spec;"
         ; this fails because non-optional title was replaced with nil
-        (is (thrown-with-msg? #?(:clj java.lang.AssertionError :cljs js/Error) #"Spec failed" (db/speculate b/mobile-sync-config after-import (first (sync/push-transaction b/mobile-sync-config {"FIGame" [(assoc original-game "title" nil)]} nil after-import entities-by-name nil)))))
+        (is (thrown-with-msg? #?(:clj java.util.concurrent.ExecutionException :cljs js/Error) #"Spec failed" (db/speculate b/mobile-sync-config after-import (first (sync/push-transaction b/mobile-sync-config {"FIGame" [(assoc original-game "title" nil)]} nil after-import entities-by-name nil)))))
         ; this fails because non-optional title was removed from input
-        (is (thrown-with-msg? #?(:clj java.lang.AssertionError :cljs js/Error) #"Spec failed" (db/speculate b/mobile-sync-config after-import (first (sync/push-transaction b/mobile-sync-config {"FIGame" [(dissoc original-game "title")]} nil after-import entities-by-name nil))))))
+        (is (thrown-with-msg? #?(:clj java.util.concurrent.ExecutionException :cljs js/Error) #"Spec failed" (db/speculate b/mobile-sync-config after-import (first (sync/push-transaction b/mobile-sync-config {"FIGame" [(dissoc original-game "title")]} nil after-import entities-by-name nil))))))
       (testing "Optional team name;"
         (let [t1 (first (sync/push-transaction b/mobile-sync-config {"FIGame" [(dissoc original-game "teamName")]} nil after-import entities-by-name nil))
               t2 (first (sync/push-transaction b/mobile-sync-config {"FIGame" [(assoc original-game "teamName" nil)]} nil after-import entities-by-name nil))
