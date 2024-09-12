@@ -375,58 +375,60 @@
 
 (defn- internal-push-transaction
   [config incoming-json internal-user snapshot entities-by-name scoped-push-input-for-user now]
-  (log-with-fn (:log config) "=========---------===========--------- PUSH ----------============-----------============")
-  (log-with-fn (:log config) "INCOMING: " incoming-json)
-  (log-with-fn (:log config) "%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%")
-  (let [; Step one - mapping of the incoming json into our model + validation
-        mapped-input (p :mapped-input 
-                        (mu/update-vals
-                         incoming-json
-                         (fn [entity-name objects]                             
-                           (let [entity (get entities-by-name entity-name)]
-                             (assert entity (str "You are using an outdated version of the app. DB model does not contain entity: " entity-name))                             
-                             (map
-                              (fn [json-obj]
-                                (let [transformed (mp/json-to-clojure json-obj entity)
-                                      json-obj-spec (mp/spec-for-name (:name entity))]
-                                  (assert (spec/valid? json-obj-spec transformed)
-                                          (str "Spec failed: "
-                                               (spec/explain-str json-obj-spec transformed)
-                                               "\n for object: " transformed
-                                               "\n spec: " json-obj-spec))                                            
-                                  transformed)) objects)))))
-        [input scoped-uuids] (p :scoped-push-input (scoped-push-input-for-user mapped-input internal-user entities-by-name snapshot))
-        rel-objs-to-fetch (p :compute-rel-objs-to-fetch
-                             (compute-rel-objs-to-fetch config input entities-by-name snapshot))
-        input-objs-to-fetch (p :input-to-fetch (mu/map-keys (fn [v] (set (map :app/uuid v))) input))
-        objects-to-fetch (p :objects-to-fetch (u/join-maps [rel-objs-to-fetch input-objs-to-fetch]))]
-    (p :assert (assert (subset? (set (keys input)) (set (keys entities-by-name)))
-                       (str "Some of the entities from input: "
-                            (set (keys input))
-                            " are not present in the model: "
-                            (set (keys entities-by-name)))))
-    (let [[created-objects updated-objects] (p :fetch-and-create (fetch-and-create-objects config objects-to-fetch entities-by-name snapshot))
-          all-objects (p :app-objects (u/join-maps merge [created-objects updated-objects]))
-          pure-created-objects (p :pure-created (apply concat (map vals (vals created-objects))))
-          created-uuids (p :created-set (set (map :app/uuid pure-created-objects)))
-          updated-all-objects (p :update-changed (update-changed-objects-transaction config internal-user all-objects input entities-by-name snapshot created-uuids now))
-          transaction (p :transaction (concat pure-created-objects updated-all-objects))
-          _ (log-with-fn (:log config) "FULL TRANSACTION: " transaction)
-          [foreign-keys-in-db response invalid-uuids] (p :foreign-key (i/check-foreign-key config input snapshot (i/relations entities-by-name)))
-          error-string (str "You are going to create object refering to non existing entity. \n"
-                            "Entities with invalid relations: "  response " \n"
-                            "Invalid uuids: " (vec invalid-uuids) " \n"
-                            "Push after scoping: " input " \n")
-          error-info {:wrong-relations response :invalid-uuids invalid-uuids :input-after-scope input}]
+  (try 
+    (log-with-fn (:log config) "=========---------===========--------- PUSH ----------============-----------============")
+    (log-with-fn (:log config) "INCOMING: " incoming-json)
+    (log-with-fn (:log config) "%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%")
+    (let [; Step one - mapping of the incoming json into our model + validation
+          mapped-input (p :mapped-input 
+                          (mu/update-vals
+                           incoming-json
+                           (fn [entity-name objects]                             
+                             (let [entity (get entities-by-name entity-name)]
+                               (assert entity (str "You are using an outdated version of the app. DB model does not contain entity: " entity-name))                             
+                               (mapv
+                                (fn [json-obj]
+                                  (let [transformed (mp/json-to-clojure json-obj entity)
+                                        json-obj-spec (mp/spec-for-name (:name entity))]
+                                    (assert (spec/valid? json-obj-spec transformed)
+                                            (str "Spec failed: "
+                                                 (spec/explain-str json-obj-spec transformed)
+                                                 "\n for object: " transformed
+                                                 "\n spec: " json-obj-spec))                                            
+                                    transformed)) objects)))))
+          [input scoped-uuids] (p :scoped-push-input (scoped-push-input-for-user mapped-input internal-user entities-by-name snapshot))
+          rel-objs-to-fetch (p :compute-rel-objs-to-fetch
+                               (compute-rel-objs-to-fetch config input entities-by-name snapshot))
+          input-objs-to-fetch (p :input-to-fetch (mu/map-keys (fn [v] (set (map :app/uuid v))) input))
+          objects-to-fetch (p :objects-to-fetch (u/join-maps [rel-objs-to-fetch input-objs-to-fetch]))]
+      (p :assert (assert (subset? (set (keys input)) (set (keys entities-by-name)))
+                         (str "Some of the entities from input: "
+                              (set (keys input))
+                              " are not present in the model: "
+                              (set (keys entities-by-name)))))
+      (let [[created-objects updated-objects] (p :fetch-and-create (fetch-and-create-objects config objects-to-fetch entities-by-name snapshot))
+            all-objects (p :app-objects (u/join-maps merge [created-objects updated-objects]))
+            pure-created-objects (p :pure-created (apply concat (map vals (vals created-objects))))
+            created-uuids (p :created-set (set (map :app/uuid pure-created-objects)))
+            updated-all-objects (p :update-changed (update-changed-objects-transaction config internal-user all-objects input entities-by-name snapshot created-uuids now))
+            transaction (p :transaction (concat pure-created-objects updated-all-objects))
+            _ (log-with-fn (:log config) "FULL TRANSACTION: " transaction)
+            [foreign-keys-in-db response invalid-uuids] (p :foreign-key (i/check-foreign-key config input snapshot (i/relations entities-by-name)))
+            error-string (str "You are going to create object refering to non existing entity. \n"
+                              "Entities with invalid relations: "  response " \n"
+                              "Invalid uuids: " (vec invalid-uuids) " \n"
+                              "Push after scoping: " input " \n")
+            error-info {:wrong-relations response :invalid-uuids invalid-uuids :input-after-scope input}]
 
-      (p :duplicates(check-for-duplicates config input entities-by-name snapshot))       
-      (if foreign-keys-in-db
-        (do 
-          (log-with-fn (:log config) "=========---------===========--------- /PUSH ----------============-----------============")
-          [transaction [created-objects updated-objects] scoped-uuids])
-        (do
-          (log-with-fn (:log config) error-string)
-          (throw (ex-info (str "You are going to create object refering to non existing entity. \n" (dissoc error-info :input-after-scope)) error-info)))))))
+        (p :duplicates(check-for-duplicates config input entities-by-name snapshot))       
+        (if foreign-keys-in-db
+          (do 
+            (log-with-fn (:log config) "=========---------===========--------- /PUSH ----------============-----------============")
+            [transaction [created-objects updated-objects] scoped-uuids])
+          (do
+            (log-with-fn (:log config) error-string)
+            (throw (ex-info (str "You are going to create object refering to non existing entity. \n" (dissoc error-info :input-after-scope)) error-info))))))
+    (catch java.util.concurrent.ExecutionException e (throw (.getCause e)))))
 
 ; -------------------- scope push helpers ----------------------
 

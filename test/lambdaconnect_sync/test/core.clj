@@ -265,7 +265,7 @@
     (testing "Do a pull (fails because constant 'lat' is not defined)"
       (let [snapshot (db/speculate b/mobile-sync-config snapshot tx)]
         ;; Lazy nightmare
-        (is (thrown? java.util.concurrent.ExecutionException 
+        (is (thrown? java.lang.AssertionError 
                      (doseq [x (vals (pull snapshot user-uuid {"LAUser" 0 "LALocation" 0} 
                                            true (fn [_snapshot _user] 
                                                   {:wow (delay true)

@@ -73,40 +73,44 @@
    entities-by-name
    scoping-edn ; as defined in resources/model/pull-scope.edn (or nil for no scoping) additional :constants tag is possible for constants restrictions
    ]
-  (when (:constants scoping-edn) (assert (fn? (:constants scoping-edn))))
-  (let [config (if (:driver config)
-                 config
-                 (assoc config :driver (datomic-driver/->DatomicDatabaseDriver config)))
-        scoping-edn (if (:constants scoping-edn) 
-                      (update scoping-edn :constants #(% snapshot internal-user))
-                      scoping-edn)
-        mapping-fun pmap ;; map for debug, pmap for production
-        sync-revision (db/get-sync-revision config snapshot)
+  (try
+    (when (:constants scoping-edn) (assert (fn? (:constants scoping-edn))))
+    (let [config (if (:driver config)
+                   config
+                   (assoc config :driver (datomic-driver/->DatomicDatabaseDriver config)))
+          scoping-edn (if (:constants scoping-edn) 
+                        (update scoping-edn :constants #(% snapshot internal-user))
+                        scoping-edn)
+          mapping-fun pmap ;; map for debug, pmap for production
+          sync-revision (db/get-sync-revision config snapshot)
         [scoped-tags scoped-ids tags-by-ids] 
-        (when scoping-edn
-          (let [scoped-tags (scoping/scope config snapshot internal-user entities-by-name scoping-edn false (set (keys (dissoc scoping-edn :constants))))]
-            [scoped-tags (scoping/reduce-entities scoped-tags) (scoping/inverse-entities scoped-tags)]))
-        
-        objects (mapping-fun (fn [[entity-kw sync-revision]]
-                               (let [entity-name (name entity-kw)
-                                     entity (get entities-by-name entity-name)]
-                                 (assert entity (str "You are using an outdated version of the app. The DB model does not contain entity: " entity-kw))
-                                 (let [entity-scoped-ids (if (nil? scoping-edn)
-                                                           (get scoped-ids (keyword entity-name))
-                                                           (or (get scoped-ids (keyword entity-name)) []))
-                                       modified-ids (db/get-changed-ids config snapshot entity-name sync-revision entities-by-name entity-scoped-ids)]
-                                   [entity-name (db/get-objects-by-ids config entity modified-ids snapshot true)])))
-                             incoming-json)]
-    (into {} (map (fn [[entity-name objs]]
-                    (let [entity (get entities-by-name entity-name)
+          (when scoping-edn
+            (let [scoped-tags (scoping/scope config snapshot internal-user entities-by-name scoping-edn false (set (keys (dissoc scoping-edn :constants))))]
+              [scoped-tags (scoping/reduce-entities scoped-tags) (scoping/inverse-entities scoped-tags)]))
+          
+          objects (mapping-fun (fn [[entity-kw sync-revision]]
+                                 (let [entity-name (name entity-kw)
+                                       entity (get entities-by-name entity-name)]
+                                   (assert entity (str "You are using an outdated version of the app. The DB model does not contain entity: " entity-kw))
+                                   (let [entity-scoped-ids (if (nil? scoping-edn)
+                                                             (get scoped-ids (keyword entity-name))
+                                                             (or (get scoped-ids (keyword entity-name)) []))
+                                         modified-ids (db/get-changed-ids config snapshot entity-name sync-revision entities-by-name entity-scoped-ids)]
+                                     [entity-name (db/get-objects-by-ids config entity modified-ids snapshot true)])))
+                               incoming-json)]
+      (into {} (doall 
+                (map (fn [[entity-name objs]]
+                       (let [entity (get entities-by-name entity-name)
                                         ; we create all the relationships as empty and later overwrite 
-                          proto-object (merge (into {} (map (fn [r] [(mp/datomic-name r) (if (:to-many r) [] nil)]) (vals (:relationships entity))))
-                                              {:syncRevision sync-revision}
-                                              (into {} (map (fn [a] [(mp/datomic-name a) (:default-value a)]) (filter :default-value (vals (:attributes entity))))))]
-                      [entity-name (mapping-fun #(-> %
-                                                     (mp/replace-inverses entity)
-                                                     ((partial merge proto-object))
-                                                     (scoped-object entities-by-name entity (dissoc scoping-edn :constants) scoped-tags scoped-ids tags-by-ids (:constants scoping-edn))
-                                                     (mp/clojure-to-json entity))
-                                                objs)])) objects))))
-
+                             proto-object (merge (into {} (map (fn [r] [(mp/datomic-name r) (if (:to-many r) [] nil)]) (vals (:relationships entity))))
+                                                 {:syncRevision sync-revision}
+                                                 (into {} (map (fn [a] [(mp/datomic-name a) (:default-value a)]) (filter :default-value (vals (:attributes entity))))))]
+                        [entity-name (doall (mapping-fun #(-> %
+                                                       (mp/replace-inverses entity)
+                                                       ((partial merge proto-object))
+                                                       (scoped-object entities-by-name entity (dissoc scoping-edn :constants) scoped-tags scoped-ids tags-by-ids (:constants scoping-edn))
+                                                       (mp/clojure-to-json entity))
+                                                  objs))])) objects))))
+      (catch java.util.concurrent.ExecutionException e (throw (.getCause e)))))
+  
+  

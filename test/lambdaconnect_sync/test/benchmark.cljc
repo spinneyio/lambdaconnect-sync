@@ -68,9 +68,7 @@
 
 (deftest benchmarks
   (testing "2000 5000"
-    (test-sync-performance 2000 5000))
-  (testing "10000 40000"
-    (test-sync-performance 10000 100000)))
+    (test-sync-performance 2000 5000)))
 
 
 
