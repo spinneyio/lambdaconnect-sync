@@ -418,7 +418,7 @@
           (do
             (log-with-fn (:log config) error-string)
             (throw (ex-info (str "You are going to create object refering to non existing entity. \n" (dissoc error-info :input-after-scope)) error-info))))))
-    (catch java.util.concurrent.ExecutionException e (throw (.getCause e)))))
+    (catch #?(:clj java.util.concurrent.ExecutionException :cljs js/Error) e (throw #?(:clj (.getCause e) :cljs e)))))
 
 ; -------------------- scope push helpers ----------------------
 

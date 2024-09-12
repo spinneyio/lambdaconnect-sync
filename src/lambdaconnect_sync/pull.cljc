@@ -113,7 +113,7 @@
                                                        (scoped-object entities-by-name entity scoping-edn scoped-tags scoped-ids tags-by-ids (:constants scoping-edn-with-constants))
                                                        (mp/clojure-to-json entity))
                                                   objs))])) objects))))
-      (catch java.util.concurrent.ExecutionException e (throw (.getCause e)))))
+    (catch #?(:clj java.util.concurrent.ExecutionException :cljs js/Error) e (throw #?(:clj (.getCause e) :cljs e)))))
   
   
 (defn pull 
