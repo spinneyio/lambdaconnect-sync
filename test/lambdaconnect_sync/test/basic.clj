@@ -1,10 +1,23 @@
 (ns lambdaconnect-sync.test.basic
   (:require  [datomic.api :as d]
              [clojure.spec.gen.alpha :as gen]
-             [lambdaconnect-model.core :as mp]))
+             [lambdaconnect-sync.db-drivers.datomic :as datomic-driver]
+             [lambdaconnect-model.core :as mp]
+             [clojure.data.json :refer [read-str]]))
+
+
+(defn load-model-fixture [filename]
+  (str "env/test/resources/" filename))
+
+(defn slurp-fixture [filename] 
+  (->> filename
+       (str "env/test/resources/")
+       slurp
+       read-str))
+
 
 (defn get-mobile-sync-config []
-  {:log (constantly nil)
+  {:log nil
    :as-of d/as-of
    :pull d/pull
    :pull-many d/pull-many
@@ -14,7 +27,8 @@
    :with d/with
    :basis-t d/basis-t})
 
-(def mobile-sync-config (get-mobile-sync-config))
+(def mobile-sync-config (let [c (get-mobile-sync-config)]
+                          (assoc c :driver (datomic-driver/->DatomicDatabaseDriver c))))
 (def conn (atom nil))
 
 (defn setup-basic-test-environment [model-path generators f]
@@ -42,7 +56,13 @@
                         {:db/ident              :app/active
                          :db/valueType          :db.type/boolean
                          :db/cardinality        :db.cardinality/one
-                         :db/doc                "If false, it means the entity was deleted"}])
+                         :db/doc                "If false, it means the entity was deleted"}
+                        
+                        {:db/ident              :app/syncRevisionFromMaster
+                         :db/valueType          :db.type/long
+                         :db/cardinality        :db.cardinality/one
+                         :db/doc                "For slave instances saves the sync revision from master"}
+                        ])
     @(d/transact @conn (mp/datomic-schema entities-by-name))   
     (mp/specs entities-by-name generators)
     (try (f)

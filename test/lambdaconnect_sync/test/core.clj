@@ -1,4 +1,4 @@
-(ns lambdaconnect-sync.test.core-test
+(ns lambdaconnect-sync.test.core
   (:require [lambdaconnect-sync.core :as sync]
             [clojure.test :refer [deftest testing is use-fixtures] :as t]
             [clojure.spec.alpha :as s]
@@ -107,7 +107,7 @@
   (testing "Schema from model"
     (let [model (mp/entities-by-name "env/test/resources/test-model-0.xml")
           schema (mp/datomic-schema model)]
-      (is (= (+ 37 8 (count model)) (count schema)))))
+      (is (= (+ 43 8 (count model)) (count schema)))))
   
   (testing "User info"
     (let [model (mp/entities-by-name "env/test/resources/test-model-0.xml")]
@@ -265,7 +265,7 @@
     (testing "Do a pull (fails because constant 'lat' is not defined)"
       (let [snapshot (db/speculate b/mobile-sync-config snapshot tx)]
         ;; Lazy nightmare
-        (is (thrown? java.util.concurrent.ExecutionException 
+        (is (thrown? java.lang.AssertionError 
                      (doseq [x (vals (pull snapshot user-uuid {"LAUser" 0 "LALocation" 0} 
                                            true (fn [_snapshot _user] 
                                                   {:wow (delay true)

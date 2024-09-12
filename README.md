@@ -12,7 +12,7 @@ Leiningen coordinates:
 
 ## Usage
 
-Each function requires a config as the first argument:
+Each function requires a config as the first argument. It can either be in the legacy form:
 
 ```
 (def config {:log (constantly nil)
@@ -25,6 +25,32 @@ Each function requires a config as the first argument:
              :with d/with
              :basis-t d/basis-t})
 ```
+
+or in the modern form:
+
+```
+(def config {:log (constantly nil)
+             :driver *instance of database driver*})
+```
+
+The way to create datomic driver in the modern form is as follows:
+
+```
+(require '[lambdaconnect-sync.db-driver.datomic :as datomic-driver])
+
+(def driver (datomic-driver/->DatomicDatabaseDriver 
+                  {:log (constantly nil)
+                   :as-of d/as-of                               
+                   :pull-many d/pull-many
+                   :pull d/pull
+                   :q d/q
+                   :history d/history
+                   :tx->t d/tx->t
+                   :with d/with
+                   :basis-t d/basis-t}))
+```
+
+There may be more database drivers, for example in clojurescript/javascript world.
 
 ## License
 

@@ -16,9 +16,13 @@
                    (apply concat)
                    (map :app/uuid)
                    (into #{}))
+;        _ (println "!!!! Check many uuids " uuids)
+;        _ (println "CHECK MANY!!!!!! " uuids push-input)
         uuids-from-json (db/check-uuids-for-entity config uuids destination-entity-name snapshot)
         uuids-from-db (get-uuids-from-json destination-entity-name push-input)
-        all-uuids  (s/union uuids-from-json uuids-from-db #{nil})]
+        all-uuids  (s/union uuids-from-json uuids-from-db #{nil})
+ ;       _ (println uuids-from-json uuids-from-db all-uuids)
+        ]
     [entity-name relation-name (s/subset? uuids all-uuids) (s/difference uuids all-uuids)]))
 
 (defn check-one [config push-input snapshot entity-name relation-name destination-entity-name]
@@ -27,6 +31,8 @@
                    (map (fn [object] ((keyword entity-name relation-name) object)))
                    (map :app/uuid)
                    (into #{}))
+;        _ (println "!!!! Check one uuid" uuids)
+ ;       _ (println "CHECK ONE!!!!!! " uuids push-input)
         uuids-from-json (get-uuids-from-json destination-entity-name push-input)
         uuids-from-db (db/check-uuids-for-entity config uuids destination-entity-name snapshot)
         all-uuids  (s/union uuids-from-json uuids-from-db #{nil})]

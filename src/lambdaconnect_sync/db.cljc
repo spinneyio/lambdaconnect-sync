@@ -1,77 +1,41 @@
 (ns lambdaconnect-sync.db
   (:require [lambdaconnect-model.tools :as t]
-            [clojure.set :as sets]))
+            [clojure.set :as sets]
+            [lambdaconnect-sync.db-interface :as i]))
 
 
 (defn uuid [] #?(:clj (java.util.UUID/randomUUID)
                  :cljs (random-uuid)))
 
-(defn invoke [f & args] (apply f args))
-
 (defn speculate [config snapshot transaction]
-  (:db-after ((:with config) snapshot transaction)))
+  (i/speculate (:driver config) snapshot transaction))
 
 (defn get-objects-by-ids
   ([config entity ids snapshot] 
    (get-objects-by-ids config entity ids snapshot false))
   ([config entity ids snapshot fetch-inverses]
-   (let [datomic-relationships (set (vals (:datomic-relationships entity)))
-         relationships (set (vals (:relationships entity)))
-         inverses (sets/difference relationships datomic-relationships)
-         fields-to-fetch (set (concat [:db/id]
-                                      (map #(keyword "app" %) t/special-attribs)
-                                      (map t/datomic-name (vals (:attributes entity)))
-                                      (map (fn [r] {[(t/datomic-name r) :limit nil] [:app/uuid :db/id]})
-                                           datomic-relationships)
-                                      (if fetch-inverses
-                                        (map (fn [r] {[(t/datomic-inverse-name r) :limit nil] [:app/uuid :db/id]})
-                                             inverses) [])))
-         ret-val ((:pull-many config) snapshot fields-to-fetch ids)]
-     ret-val)))
+   (i/objects-by-ids (:driver config) snapshot entity ids fetch-inverses)))
 
 (defn check-uuids-for-entity [config uuids entity-name snapshot]
-  (when (seq uuids)
-    (let [entity-keyword (keyword entity-name "ident__")]
-      (->> ((:q config)
-            '[:find ?uuid
-              :in $ [?uuid ...] ?attr
-              :where
-              [?e :app/uuid ?uuid]
-              [?e ?attr]]
-            snapshot uuids entity-keyword)
-           (mapv first)
-           set))))
+  (i/check-uuids-for-entity (:driver config) snapshot entity-name uuids))
 
-(defn get-id-for-uuid [config snapshot uuid]
-  ((:pull config) snapshot '[:db/id] [:app/uuid uuid]))
+(defn get-id-for-uuid [config snapshot entity uuid]
+  (i/id-for-uuid (:driver config) snapshot entity uuid))
 
 (defn get-sync-revision [config snapshot]
-  ((:basis-t config) snapshot))
+  (i/sync-revision (:driver config) snapshot))
 
 (defn as-of [config snapshot sync-revision]
-  ((:as-of config) snapshot sync-revision))
+  (i/as-of (:driver config) snapshot sync-revision))
 
 (defn get-objects-by-uuids
   ([config entity uuids snapshot] 
    (get-objects-by-uuids config entity uuids snapshot false))
   ([config entity uuids snapshot fetch-inverses]
-   (let [ids (->> ((:q config)
-                   '[:find ?e
-                     :in $ [?uuid ...]
-                     :where [?e :app/uuid ?uuid]]
-                   snapshot uuids)
-                  (mapv first))]
-     (get-objects-by-ids config entity ids snapshot fetch-inverses))))
+   (i/objects-by-uuids (:driver config) snapshot entity uuids fetch-inverses)))
 
 (defn get-misclasified-objects [config snapshot entity uuids]
-  (->> ((:q config)
-        '[:find (pull ?e [*])
-          :in $ ?id [?uuid ...]
-          :where
-          [?e :app/uuid ?uuid]
-          (not [?e ?id])]
-        snapshot (t/unique-datomic-identifier entity) uuids)
-       (mapv first)))
+  (i/misclassified-objects (:driver config) snapshot entity uuids))
 
 (defn object-with-ident? [object]
   (let [attr-names (->> object keys (map name) set)]
@@ -91,51 +55,20 @@
 (defn get-related-objects
   "Fetches the objects that refer to the list of uuids by their relationship"
   [config relationship uuids snapshot]
-  (when (seq uuids)
-    (->> ((:q config)
-          '[:find ?result
-            :in $ [?uuid ...] ?relationship
-            :where [?target :app/uuid ?uuid]
-            [?source ?relationship ?target]
-            [?source :app/uuid ?result]]
-          snapshot uuids (t/datomic-name relationship))
-         (mapv first))))
+  (i/related-objects (:driver config) snapshot relationship uuids)
+)
 
 (defn get-referenced-objects
   [config relationship uuids snapshot]
-  (when (seq uuids)
-    (->> ((:q config)
-          '[:find ?result
-            :in $ [?uuid ...] ?relationship
-            :where [?source :app/uuid ?uuid]
-            [?source ?relationship ?target]
-            [?target :app/uuid ?result]]
-          snapshot uuids (t/datomic-name relationship))
-         (mapv first))))
+  (i/referenced-objects (:driver config) snapshot relationship uuids))
 
 (defn get-reciprocal-objects
   [config relationship inverse uuids snapshot]
-  (when (seq uuids)
-    (->> (if relationship
-           ((:q config)
-            '[:find ?result
-              :in $ [?uuid ...] ?relationship
-              :where
-              [?target :app/uuid ?uuid]
-              [?source ?relationship ?target]
-              [?source :app/uuid ?result]]
-            snapshot uuids (t/datomic-name relationship))
-
-           ((:q config)
-            '[:find ?result
-              :in $ [?uuid ...] ?relationship
-              :where
-              [?target :app/uuid ?uuid]
-              [?target ?relationship ?source]
-              [?source :app/uuid ?result]]
-            snapshot uuids (t/datomic-name inverse)))
-         (mapv first))))
-
+  (assert (or relationship inverse))
+  (assert (not (and relationship inverse)))
+  (if relationship 
+    (get-related-objects config relationship uuids snapshot)
+    (get-referenced-objects config inverse uuids snapshot)))
 
 (defn get-changed-ids
   ([config
@@ -150,38 +83,7 @@
     transaction-since-number
     entities-by-name
     scoped-ids]
-   (let [name (get (t/defining-attributes entities-by-name) entity-name)
-         db-now snapshot
-         db-changes ((:history config) snapshot)
-         changed-object-ids (if scoped-ids
-                              ((:q config)
-                               '[:find ?e
-                                 :in $ $changes ?defining-name ?since [?e ...] ?tx->t
-                                 :where
-                                 ($changes or
-                                           [?e _ _ ?tx]
-                                           [_ _ ?e ?tx])
-                                 [(lambdaconnect-sync.db/invoke ?tx->t ?tx) ?t]
-                                 [(>= ?t ?since)]]
-                               db-now db-changes name transaction-since-number scoped-ids (:tx->t config))
-                              ((:q config)
-                               '[:find ?e
-                                 :in $ $changes ?defining-name ?since ?tx->t
-                                 :where
-                                 [$ ?e ?defining-name]
-                                 ($changes or
-                                           [?e _ _ ?tx]
-                                           [_ _ ?e ?tx])
-                                 [(lambdaconnect-sync.db/invoke ?tx->t ?tx) ?t]
-                                 [(>= ?t ?since)]]
-                               db-now db-changes name transaction-since-number (:tx->t config)))]
-     (mapv first changed-object-ids))))
+   (i/changed-ids (:driver config) snapshot (get entities-by-name entity-name) transaction-since-number scoped-ids)))
 
 (defn uuids-for-ids [config snapshot ids]
-  (->> ((:q config)
-        '[:find ?uuid
-          :in $ [?id ...]
-          :where
-          [?id :app/uuid ?uuid]]
-        snapshot ids)
-       (mapv first)))
+  (i/uuids-for-ids (:driver config) snapshot ids))

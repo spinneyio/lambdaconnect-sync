@@ -1,5 +1,6 @@
 (ns lambdaconnect-sync.test.hooks
-  (:require [clojure.test :refer [deftest is testing]]
+  (:require #?(:clj [clojure.test :refer [deftest is testing]]
+               :cljs [cljs.test :refer [deftest is testing]])
             [lambdaconnect-sync.hooks :as hooks]))
 
 (deftest get-ids-from-entry

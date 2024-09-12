@@ -1,24 +1,29 @@
-(ns lambdaconnect-sync.test.push
-  (:require [clojure.test :refer [deftest is testing use-fixtures]]
-            [clojure.spec.alpha :as s]
-            [lambdaconnect-sync.test.basic :refer [mobile-sync-config conn] :as b]
-            [lambdaconnect-model.core :as mp]
-            [datomic.api :as d]
-            [lambdaconnect-model.tools :as mpt]            
-            [lambdaconnect-sync.utils :as u]
-            [clojure.data.json :refer [read-str]]
-            [clojure.spec.gen.alpha :as gen]
-            [lambdaconnect-sync.core :as sync]
-            [lambdaconnect-sync.db :as db]))
+(ns lambdaconnect-sync.test.push-memory
+  (:require 
+   [lambdaconnect-sync.test.basic-memory :as b]
+   [lambdaconnect-model.core :as mp]            
+   [lambdaconnect-model.tools :as mpt]            
+   [lambdaconnect-sync.utils :as u]
+   [lambdaconnect-sync.core :as sync]
+   [lambdaconnect-sync.db :as db]
+   [clojure.pprint :refer [pprint]]
+   
+   #?@(:cljs [[clojure.test.check.generators]
+              [cljs.spec.gen.alpha :as gen]
+              [cljs.test :refer [deftest testing is use-fixtures] :as t]
+              [cljs.spec.alpha :as s]]
+       :clj [[clojure.spec.gen.alpha :as gen]
+             [clojure.test :refer [deftest testing is use-fixtures] :as t]
+             [clojure.spec.alpha :as s]])))
 
-(use-fixtures :once (partial b/setup-basic-test-environment "env/test/resources/model1.xml"
+(use-fixtures :once (partial b/setup-basic-test-environment (b/load-model-fixture "model1.xml") 
                              {:LAUser/email (fn [] (gen/fmap #(str % "@test.com") (gen/string-alphanumeric)))
                               :LAUser/gender #(s/gen #{"U" "M" "F"})}))
 
 (deftest rel-objs-to-fetch
   (testing "Generating data"
-    (let [entities-by-name (mp/entities-by-name "env/test/resources/model1.xml")
-          snapshot (d/db @b/conn)]
+    (let [entities-by-name (mp/entities-by-name  (b/load-model-fixture "model1.xml"))
+          snapshot @b/conn]
       (mp/specs entities-by-name {:FIUser/gender #(s/gen #{"M" "F" "U"})
                                   :FIUser/email (fn [] (gen/fmap #(str % "@test.com") (gen/string-alphanumeric)))
                                   :FIGame/gender #(s/gen #{"M" "F" "U"})
@@ -33,7 +38,7 @@
                                            [ename  (try
                                                      (doall (gen/sample
                                                              (s/gen (mp/spec-for-name ename)) 100))
-                                                     (catch Throwable e
+                                                     (catch #?(:clj Throwable :cljs js/Error) e
                                                        (do (println "Exception for entity" ename ", " (u/exception-description e))
                                                            (throw e))))]) 
                                          (keys entities-by-name)))
@@ -42,17 +47,15 @@
 
 (deftest parse-fixtures
   (testing "Reading fixtures"
-    (-> "env/test/resources/fixtures.json"
-        slurp
-        read-str)))
+    (b/slurp-fixture "fixtures.json")))
 
-(deftest test-optionals
+(deftest  test-optionals
   (testing "Import foodie model;"
-    (let [empty-db (d/db @b/conn)
-          entities-by-name (mp/entities-by-name "env/test/resources/model1.xml")
-          test-json (read-str (slurp "env/test/resources/fixtures.json"))
+    (let [empty-db @b/conn
+          entities-by-name (mp/entities-by-name  (b/load-model-fixture "model1.xml"))
+          test-json (b/slurp-fixture "fixtures.json")
           [transaction _] (sync/push-transaction b/mobile-sync-config test-json nil empty-db entities-by-name nil)
-          after-import (db/speculate mobile-sync-config empty-db transaction)
+          after-import (db/speculate b/mobile-sync-config empty-db transaction)
           original-game
           {"active" 1
            "createdAt" "2018-06-28T04:40:22.111Z"
@@ -74,55 +77,61 @@
            "participants"  ["66661e26-72e7-4172-8f46-d6a724e5476c"]}]
       (testing "Wrong spec;"
         ; this fails because non-optional title was replaced with nil
-        (is (thrown-with-msg? java.lang.AssertionError #"Spec failed" (db/speculate mobile-sync-config after-import (first (sync/push-transaction mobile-sync-config {"FIGame" [(assoc original-game "title" nil)]} nil after-import entities-by-name nil)))))
+        (is (thrown-with-msg? #?(:clj java.lang.AssertionError :cljs js/Error) #"Spec failed" (db/speculate b/mobile-sync-config after-import (first (sync/push-transaction b/mobile-sync-config {"FIGame" [(assoc original-game "title" nil)]} nil after-import entities-by-name nil)))))
         ; this fails because non-optional title was removed from input
-        (is (thrown-with-msg? java.lang.AssertionError #"Spec failed" (db/speculate mobile-sync-config after-import (first (sync/push-transaction mobile-sync-config {"FIGame" [(dissoc original-game "title")]} nil after-import entities-by-name nil))))))
+        (is (thrown-with-msg? #?(:clj java.lang.AssertionError :cljs js/Error) #"Spec failed" (db/speculate b/mobile-sync-config after-import (first (sync/push-transaction b/mobile-sync-config {"FIGame" [(dissoc original-game "title")]} nil after-import entities-by-name nil))))))
       (testing "Optional team name;"
-        (let [t1 (first (sync/push-transaction mobile-sync-config {"FIGame" [(dissoc original-game "teamName")]} nil after-import entities-by-name nil))
-              t2 (first (sync/push-transaction mobile-sync-config {"FIGame" [(assoc original-game "teamName" nil)]} nil after-import entities-by-name nil))
-              _ (db/speculate mobile-sync-config after-import t1)
-              after-t2 (db/speculate mobile-sync-config after-import t2)]
+        (let [t1 (first (sync/push-transaction b/mobile-sync-config {"FIGame" [(dissoc original-game "teamName")]} nil after-import entities-by-name nil))
+              t2 (first (sync/push-transaction b/mobile-sync-config {"FIGame" [(assoc original-game "teamName" nil)]} nil after-import entities-by-name nil))
+              _ (db/speculate b/mobile-sync-config after-import t1)
+              after-t2 (db/speculate b/mobile-sync-config after-import t2)]
           (is (= 0 (count t1)))
           ; we see a retraction here together with bumping of updatedAt
           (is (= 2 (count t2)) t2)
           (is (= 1 (count (filter #(= (first %) :db/retract) t2))) t2)
-          (let [t3 (first (sync/push-transaction mobile-sync-config {"FIGame" [(assoc original-game "teamName" nil)]} nil after-t2 entities-by-name nil))
-                after-t3 (db/speculate mobile-sync-config after-t2 t3)
-                t4 (first (sync/push-transaction mobile-sync-config {"FIGame" [(assoc original-game "teamName" "Drabs")]} nil after-t3 entities-by-name nil))
-                _ (db/speculate mobile-sync-config after-t3 t4)]
+          (let [t3 (first (sync/push-transaction b/mobile-sync-config {"FIGame" [(assoc original-game "teamName" nil)]} nil after-t2 entities-by-name nil))
+                after-t3 (db/speculate b/mobile-sync-config after-t2 t3)
+                t4 (first (sync/push-transaction b/mobile-sync-config {"FIGame" [(assoc original-game "teamName" "Drabs")]} nil after-t3 entities-by-name nil))
+                _ (db/speculate b/mobile-sync-config after-t3 t4)]
             ; we see a cas with "Drabs" here
             (is (= 2 (count t4)) t4)
             (is (= 1 (count (filter #(= (last %) "Drabs") t4))) t4)
             (is (= :db/cas (ffirst (filter #(= (last %) "Drabs") t4))) t4)
-            (let [t11 (first (sync/push-transaction mobile-sync-config {"FIGame" [(assoc original-game "active" 0)]} nil after-import entities-by-name nil))]
+            (let [t11 (first (sync/push-transaction b/mobile-sync-config {"FIGame" [(assoc original-game "active" 0)]} nil after-import entities-by-name nil))]
               (is (= 2 (count t11)) t11)
-              (is (empty? (first (sync/push-transaction mobile-sync-config {"FIGame" [(assoc original-game "active" 1)]} nil (db/speculate mobile-sync-config after-import t11) entities-by-name nil)))))))))))
-
-
+              (is (empty? (first (sync/push-transaction b/mobile-sync-config {"FIGame" [(assoc original-game "active" 1)]} nil (db/speculate b/mobile-sync-config after-import t11) entities-by-name nil)))))))))))
 
 (deftest test-model-db
   (testing "get-related-objects"
-    (let [empty-db (d/db @b/conn)
-          entities-by-name (mp/entities-by-name "env/test/resources/model1.xml")
+    (let [empty-db @b/conn
+          entities-by-name (mp/entities-by-name  (b/load-model-fixture "model1.xml"))
           test-entity (first (filter #(some :to-many (vals (:datomic-relationships %)))
                                      (vals entities-by-name))) ; entity that has a to-many rel
           test-relationship (first (filter :to-many (vals (:datomic-relationships test-entity))))
           uuid-one (db/uuid)
           uuid-two (db/uuid)
-          test-json (read-str (slurp "env/test/resources/fixtures.json"))]
-      (let [test-transaction [{:app/uuid uuid-one}
+          test-json (b/slurp-fixture "fixtures.json")]
+      (let [test-transaction [{:app/uuid uuid-one
+                               (->> test-relationship
+                                    :destination-entity
+                                    (get entities-by-name)
+                                    mpt/unique-datomic-identifier) true}
                               {:app/uuid uuid-two
+                               (->> test-relationship
+                                    :entity-name
+                                    (get entities-by-name)
+                                    mpt/unique-datomic-identifier) true
                                (mp/datomic-name test-relationship) [{:app/uuid uuid-one}]}]
-            snapshot (db/speculate mobile-sync-config empty-db test-transaction)
-            result (sync/get-related-objects mobile-sync-config test-relationship [uuid-one] snapshot)]
+            snapshot (db/speculate b/mobile-sync-config empty-db test-transaction)
+            result (sync/get-related-objects b/mobile-sync-config test-relationship [uuid-one] snapshot)]
         (is (= 1 (count result)))
         (is (first result) uuid-two))
       (testing "push;"
-        (let [[transaction [c1 _]] (sync/push-transaction mobile-sync-config test-json nil empty-db entities-by-name nil)
-              after-import (db/speculate mobile-sync-config empty-db transaction)
-              [t2 [c2 _]] (sync/push-transaction mobile-sync-config test-json nil after-import entities-by-name nil)
+        (let [[transaction [c1 _]] (sync/push-transaction b/mobile-sync-config test-json nil empty-db entities-by-name nil)
+              after-import (db/speculate b/mobile-sync-config empty-db transaction)
+              [t2 [c2 _]] (sync/push-transaction b/mobile-sync-config test-json nil after-import entities-by-name nil)
               [t3 [c3 _]] (sync/push-transaction
-                           mobile-sync-config
+                           b/mobile-sync-config
                            {"FIUser" [{"active"  1
                                        "createdAt" "2018-06-29T04:40:22.111Z"
                                        "updatedAt" "2018-06-29T04:40:22.111Z"
@@ -144,7 +153,7 @@
                                        "sports"  []}]}
                            nil after-import entities-by-name nil)
               [t4 _] (sync/push-transaction
-                      mobile-sync-config
+                      b/mobile-sync-config
                       {"FIUser" [{"active"  0
                                   "createdAt" "2018-06-29T04:40:22.111Z"
                                   "updatedAt" "2018-06-29T04:40:22.111Z"
@@ -164,7 +173,7 @@
                                   "messagesSent"  []
                                   "organisedGames"  []
                                   "sports"  []}]}
-                      nil (db/speculate mobile-sync-config after-import t3) entities-by-name nil)]
+                      nil (db/speculate b/mobile-sync-config after-import t3) entities-by-name nil)]
           (is (seq (reduce concat (map vals (vals c1)))))
           (is (empty? (reduce concat (map vals (vals c2)))))
           (is (empty? (reduce concat (map vals (vals c3)))))
@@ -174,10 +183,10 @@
           (is (= :FIGameAvailabilityIndication/user (nth (first t3) 2)))
           (is (seq t4))))
       (testing "replacement;"
-        (let [[transaction _] (sync/push-transaction mobile-sync-config test-json nil empty-db entities-by-name nil)
-              after-import (db/speculate mobile-sync-config empty-db transaction)
+        (let [[transaction _] (sync/push-transaction b/mobile-sync-config test-json nil empty-db entities-by-name nil)
+              after-import (db/speculate b/mobile-sync-config empty-db transaction)
               [t2 _] (sync/push-transaction
-                      mobile-sync-config
+                      b/mobile-sync-config
                       {"FIUser" [{"active"  1
                                   "createdAt" "2018-06-29T04:40:22.111Z"
                                   "updatedAt" "2018-06-29T04:40:22.111Z"
@@ -218,11 +227,12 @@
                                   "sports"  []}]}
                       nil after-import entities-by-name nil)]
           (is (= 2 (count t2)))
-          (db/speculate mobile-sync-config after-import t2))))))
+          (db/speculate b/mobile-sync-config after-import t2))))))
+
 
 (deftest test-conflict-resolution
   (testing "Setup;"
-    (let [empty-db (d/db @b/conn)
+    (let [empty-db @b/conn
           entities-by-name (mp/entities-by-name  (b/load-model-fixture "model1.xml"))          
           test-json (b/slurp-fixture "fixtures.json")
           date-parser (mpt/parser-for-attribute (get-in entities-by-name ["FIGame" :attributes "updatedAt"]))]     
@@ -279,16 +289,16 @@
           
           ;; First transaction removes one element from available users. It also changes description and updatedAt
           
-          ;; 17592186045419 and 9 are abused here.
+          ;; 7 and 9 are abused here.
 
-          (is (= #{[:db/cas 17592186045419 :app/updatedAt #inst "2060-01-01T01:01:00.000-00:00" #inst "2060-01-01T01:01:01.000-00:00"] 
-                   [:db/retract 17592186045420 :FIGameAvailabilityIndication/game 17592186045419] 
-                   [:db/cas 17592186045419 :FIGame/gameDescription "My cool game" "My cool games"]} (set t2)))
+          (is (= #{[:db/cas 7 :app/updatedAt #inst "2060-01-01T01:01:00.000-00:00" #inst "2060-01-01T01:01:01.000-00:00"] 
+                   [:db/retract 9 :FIGameAvailabilityIndication/game 7] 
+                   [:db/cas 7 :FIGame/gameDescription "My cool game" "My cool games"]} (set t2)))
 
           ;; Second transaction detects conflict and resolves it by ignoring description and available users changes (since they are the same as they were). Only gender is altered.
 
-          ;; 17592186045419 is abused here
+          ;; 7 is abused here
 
-          (is (= #{[:db/cas 17592186045419 :FIGame/gender "U" "M"] 
-                   [:db/cas 17592186045419 :app/updatedAt #inst "2060-01-01T01:01:01.000-00:00" #inst "2060-01-01T01:01:02.000-00:00"]} (set t3))))))))
+          (is (= #{[:db/cas 7 :FIGame/gender "U" "M"] 
+                   [:db/cas 7 :app/updatedAt #inst "2060-01-01T01:01:01.000-00:00" #inst "2060-01-01T01:01:02.000-00:00"]} (set t3))))))))
 
