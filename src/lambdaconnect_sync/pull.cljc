@@ -65,27 +65,29 @@
 
 ; incoming json: {"FIUser" 123 "FIGame" 344} is a dictionary with entity names as keys
 
-(defn pull
-  [config
-   incoming-json
-   internal-user
-   snapshot
-   entities-by-name
-   scoping-edn ; as defined in resources/model/pull-scope.edn (or nil for no scoping) additional :constants tag is possible for constants restrictions
-   ]
-  (try
-    (when (:constants scoping-edn) (assert (fn? (:constants scoping-edn))))
-    (let [config (if (:driver config)
-                   config
-                   (assoc config :driver (datomic-driver/->DatomicDatabaseDriver config)))
-          scoping-edn (if (:constants scoping-edn) 
-                        (update scoping-edn :constants #(% snapshot internal-user))
-                        scoping-edn)
+(defn- pull-internal
+  [{:keys [config
+           incoming-json
+           internal-user
+           snapshot
+           entities-by-name
+           scoping-edn ; as defined in resources/model/pull-scope.edn (or nil for no scoping) 
+           scoping-constants]}]
+  (assert config)
+  (assert incoming-json)
+  (assert snapshot)
+  (assert entities-by-name)
+  (assert (or (not scoping-constants) (and scoping-edn (fn? scoping-constants) (not (:constants scoping-edn)))))
+  (try    
+    (let [scoping-edn-with-constants
+          (if scoping-constants 
+            (assoc scoping-edn :constants (scoping-constants snapshot internal-user))
+            scoping-edn)
           mapping-fun pmap ;; map for debug, pmap for production
           sync-revision (db/get-sync-revision config snapshot)
         [scoped-tags scoped-ids tags-by-ids] 
           (when scoping-edn
-            (let [scoped-tags (scoping/scope config snapshot internal-user entities-by-name scoping-edn false (set (keys (dissoc scoping-edn :constants))))]
+            (let [scoped-tags (scoping/scope config snapshot internal-user entities-by-name scoping-edn-with-constants false (set (keys scoping-edn)))]
               [scoped-tags (scoping/reduce-entities scoped-tags) (scoping/inverse-entities scoped-tags)]))
           
           objects (mapping-fun (fn [[entity-kw sync-revision]]
@@ -108,9 +110,20 @@
                         [entity-name (doall (mapping-fun #(-> %
                                                        (mp/replace-inverses entity)
                                                        ((partial merge proto-object))
-                                                       (scoped-object entities-by-name entity (dissoc scoping-edn :constants) scoped-tags scoped-ids tags-by-ids (:constants scoping-edn))
+                                                       (scoped-object entities-by-name entity scoping-edn scoped-tags scoped-ids tags-by-ids (:constants scoping-edn-with-constants))
                                                        (mp/clojure-to-json entity))
                                                   objs))])) objects))))
       (catch java.util.concurrent.ExecutionException e (throw (.getCause e)))))
   
   
+(defn pull 
+  ([params]
+   (pull-internal params))
+  ([config incoming-json internal-user snapshot entities-by-name scoping-edn]
+   (pull-internal {:config config
+                   :incoming-json incoming-json
+                   :internal-user internal-user
+                   :snapshot snapshot
+                   :entities-by-name entities-by-name
+                   :scoping-edn (dissoc scoping-edn :constants)
+                   :scoping-constants (:constants scoping-edn)})))

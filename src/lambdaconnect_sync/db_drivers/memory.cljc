@@ -116,7 +116,7 @@
                                                (vals (:datomic-relationships entity)))))))}}})
 
 
-(defn lookup-relationship [snapshot allocated-ids relationship id-or-lookup]
+(defn- lookup-relationship [snapshot allocated-ids relationship id-or-lookup]
   (assert relationship)
   (if (pos-int? id-or-lookup) 
     id-or-lookup
@@ -438,7 +438,7 @@
                        #(disj (or % #{}) (id->rel entity-id)))))))))
 
 
-(defn apply-transaction 
+(defn- apply-transaction 
   [database transaction]
   {:pre [(s/valid? ::memory-database database) (if (s/valid? ::transaction transaction)
                                                  true

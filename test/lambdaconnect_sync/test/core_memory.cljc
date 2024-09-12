@@ -159,7 +159,7 @@
     (is (empty? rejected-fields))    
     
     (testing "Do a pull and see what came in"
-      (let [snapshot (memory/apply-transaction snapshot tx)
+      (let [snapshot (db/speculate b/mobile-sync-config snapshot tx)
             result (pull snapshot user-uuid {"LAUser" 0 "LALocation" 0} 
                          true (fn [_snapshot _user]
                                 {:wow (delay true)
@@ -179,7 +179,7 @@
                                         (get "latitude"))))))))
     
     (testing "Try editing succeeds and replaced fields are actually replaced (no scoping)"
-      (let [snapshot (memory/apply-transaction  snapshot tx)            
+      (let [snapshot (db/speculate b/mobile-sync-config snapshot tx)            
             {:keys [tx rejections]} 
             (push-transaction snapshot user-uuid {"LALocation" 
                                                   [(mp/clojure-to-json (assoc la-location 

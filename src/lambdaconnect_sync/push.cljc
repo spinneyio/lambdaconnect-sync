@@ -363,16 +363,6 @@
                                                      (right-relationship-transaction config snapshot db-id relationship orig-value rel-value entities-by-name target-objects db-uuid)))) (vec o-r)))]
                                (concat attribute-modification-transaction relationship-modification-transaction special-modification-transaction))) entity-objects)))) (vec input))))))
 
-; ==================================================================
-
-; The import process goes as follows:
-;
-; 1. Acquire the current db snapshot, internal user object and entities-by-name from the parser
-; 2. Pass the incoming json (as a string) to the push-transaction method
-; 3. push-transaction would return the transaction and a data structure holding all the new objects created
-; 4. Perform the transaction and acquire the new db snapshot
-; 5. pass the new snapshot together with created objects to send-creation-hooks!
-
 (defn- internal-push-transaction
   [config incoming-json internal-user snapshot entities-by-name scoped-push-input-for-user now]
   (try 
@@ -819,6 +809,17 @@
                           :rejected-fields (merge-with #(merge-with union %1 %2) field-rejections (:rejected-fields rejections))}
                          @scoped-tags-snapshot)))))))))
 
+
+
+; ==================================================================
+
+; The import process goes as follows:
+;
+; 1. Acquire the current db snapshot, internal user object and entities-by-name from the parser
+; 2. Pass the incoming json (as a clojure structure) to the push-transaction method
+; 3. push-transaction would return the transaction and a data structure holding all the new objects created
+; 4. Perform the transaction and acquire the new db snapshot
+; 5. pass the new snapshot together with created objects to send-creation-hooks!
 
 
 (defn push-transaction
