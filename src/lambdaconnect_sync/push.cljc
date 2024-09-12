@@ -295,7 +295,9 @@
    entities-by-name ; schema dictionary
    snapshot ; database snapshot to work with
    created-entities-uuids ; a set of uuids of objects that are to be created
-   now]
+   now
+   slave-mode?
+   sync-revision-for-slave-mode]
   (doall   
    (set
     (apply concat
@@ -315,7 +317,13 @@
                                    db-uuid (:app/uuid db-object)
                                         ; --------- attributes -------
                                    
-                                   conflict-resolved-object (conflicts/resolve-modification-conflicts config db-object object entity internal-user snapshot)
+                                   conflict-resolved-object (conflicts/resolve-modification-conflicts 
+                                                             config 
+                                                             db-object 
+                                                             (if slave-mode? (assoc object :app/syncRevision sync-revision-for-slave-mode) object) 
+                                                             entity 
+                                                             internal-user 
+                                                             snapshot)
                                    
                                    _ (log-with-fn (:log config) "CONFLICT R:: " conflict-resolved-object)
                                    
@@ -341,6 +349,10 @@
                                                                              (cas db-id k (k dbo-s-a) v))
                                                                            modified-s-attributes)
                                                                       [])
+                                   special-modification-transaction (if (and slave-mode? (not= (:app/syncRevision object) 
+                                                                                               (:app/syncRevisionFromMaster db-object))) 
+                                                                      (conj special-modification-transaction [:db/add db-id :app/syncRevisionFromMaster (:app/syncRevision object)])
+                                                                      special-modification-transaction)
                                         ; ------ relationships -------
                                    o-r (select-keys overriden-object relationship-names)
                                    dbo-r (select-keys db-object relationship-names)
@@ -364,7 +376,7 @@
                                (concat attribute-modification-transaction relationship-modification-transaction special-modification-transaction))) entity-objects)))) (vec input))))))
 
 (defn- internal-push-transaction
-  [config incoming-json internal-user snapshot entities-by-name scoped-push-input-for-user now]
+  [config incoming-json internal-user snapshot entities-by-name scoped-push-input-for-user now slave-mode? sync-revision-for-slave-mode]
   (try 
     (log-with-fn (:log config) "=========---------===========--------- PUSH ----------============-----------============")
     (log-with-fn (:log config) "INCOMING: " incoming-json)
@@ -400,7 +412,7 @@
             all-objects (p :app-objects (u/join-maps merge [created-objects updated-objects]))
             pure-created-objects (p :pure-created (apply concat (map vals (vals created-objects))))
             created-uuids (p :created-set (set (map :app/uuid pure-created-objects)))
-            updated-all-objects (p :update-changed (update-changed-objects-transaction config internal-user all-objects input entities-by-name snapshot created-uuids now))
+            updated-all-objects (p :update-changed (update-changed-objects-transaction config internal-user all-objects input entities-by-name snapshot created-uuids now slave-mode? sync-revision-for-slave-mode))
             transaction (p :transaction (concat pure-created-objects updated-all-objects))
             _ (log-with-fn (:log config) "FULL TRANSACTION: " transaction)
             [foreign-keys-in-db response invalid-uuids] (p :foreign-key (i/check-foreign-key config input snapshot (i/relations entities-by-name)))
@@ -497,10 +509,7 @@
            internal-user 
            snapshot 
            entities-by-name
-           scoping-edn
-           master-node?] 
-    :or 
-    {master-node? true} 
+           scoping-edn] 
     :as params}
    push-output 
    rejections 
@@ -621,8 +630,8 @@
                                              (#{:db/retractEntity} (first entry)) (let [[_ id] entry] (object-ids id))
                                              :else (assert false (str "Unknown transaction entry: " entry)))))
 
-                 created-uuids (set (mu/mapcat keys (vals created-objects)))
-                 updated-uuids (set (mu/mapcat keys (vals updated-objects)))
+                 created-uuids (set (mapcat keys (vals created-objects)))
+                 updated-uuids (set (mapcat keys (vals updated-objects)))
 
                  ;; ***************** OBJECT REJECTIONS *************************
 
@@ -829,18 +838,30 @@
             snapshot 
             entities-by-name 
             scoping-edn 
-            now] :as params}]
+            now
+            slave-mode? ;; If set to true, the transaction will have entries that save sync revision coming from the backend.
+            sync-revision-for-slave-mode] 
+     :as params}]
 
    (assert config)
    (assert incoming-json)
    (assert snapshot)
    (assert entities-by-name)
-
+   (assert (if slave-mode? (and (not scoping-edn)
+                                sync-revision-for-slave-mode) true) "No scoping allowed for slave mode. :sync-revision-for-slave-mode must be present.")
    (let [now (or now #?(:clj (java.util.Date.) :cljs (js/Date.)))
          config (if (:driver config)
                   config
                   (assoc config :driver (datomic-driver/->DatomicDatabaseDriver config)))
-         primer (internal-push-transaction config incoming-json internal-user snapshot entities-by-name (fn [i _ _ _] [i {}]) now)]
+         primer (internal-push-transaction config 
+                                           incoming-json 
+                                           internal-user 
+                                           snapshot
+                                           entities-by-name
+                                           (fn [i _ _ _] [i {}]) 
+                                           now
+                                           slave-mode?
+                                           sync-revision-for-slave-mode)]
      (scoped-push-transaction params
                        primer
                        {:rejected-objects {} :rejected-fields {}} 

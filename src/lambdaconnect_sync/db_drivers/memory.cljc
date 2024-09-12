@@ -97,25 +97,6 @@
 
 (s/def ::transaction (s/coll-of ::transaction-entry))
 
-(defn create-db [name entities-by-name]
-  {:post [(s/valid? ::memory-database %)]}
-  {:db-name name
-   :newest-snapshot-idx 1
-   :inc-max-entity-id 1
-   :snapshots {1 {:collections (into {} (map #(vector % {:collection-content {}
-                                                         :collection-uuid-index {}}) (keys entities-by-name)))
-                  :entities-by-name entities-by-name
-                  :ids-to-entity-names {}
-                  :keywords-without-inverses-by-name 
-                  (update-vals entities-by-name
-                               (fn [entity]
-                                 (concat
-                                  [(t/unique-datomic-identifier entity)]
-                                  (map t/datomic-name 
-                                       (concat (vals (:attributes entity))
-                                               (vals (:datomic-relationships entity)))))))}}})
-
-
 (defn- lookup-relationship [snapshot allocated-ids relationship id-or-lookup]
   (assert relationship)
   (if (pos-int? id-or-lookup) 
@@ -480,8 +461,8 @@
                          transaction)
 
         ;; Unpacking all the convenience "{:db/id ... :app/uuid ... :NOUser/fullName ....}" entries:
-        transaction (u/mapcat (fn [entry] (if (map? entry) 
-                                            (u/mapcat 
+        transaction (mapcat (fn [entry] (if (map? entry) 
+                                            (mapcat 
                                              (fn [[attr value]]
                                                (if (sequential? value)
                                                  (map #(vector :db/add (:db/id entry) attr %) value)
@@ -623,7 +604,7 @@
                                 :entities-by-name])
                        (dissoc (:name entity))
                        (vals))]
-      (u/mapcat #(i/objects-by-uuids this database % uuids false) entities)))
+      (mapcat #(i/objects-by-uuids this database % uuids false) entities)))
 
   (related-objects [_ database relationship uuids]
     (when (seq uuids)
@@ -672,7 +653,7 @@
                                 (vals))
 
             target-key (t/datomic-name relationship)
-            result (set (u/mapcat #(let [rel (target-key %)]
+            result (set (mapcat #(let [rel (target-key %)]
                                      (cond (set? rel) (map :app/uuid rel)
                                            rel [(:app/uuid rel)]
                                            :default []))
@@ -731,3 +712,27 @@
                (get-in snapshot [:collections entity-name :collection-content id :app/uuid]))) 
            ids))))
 
+
+
+;; External interface
+
+(defn create-db [name entities-by-name]
+  {:post [(s/valid? ::memory-database %)]}
+  {:db-name name
+   :newest-snapshot-idx 1
+   :inc-max-entity-id 1
+   :snapshots {1 {:collections (into {} (map #(vector % {:collection-content {}
+                                                         :collection-uuid-index {}}) (keys entities-by-name)))
+                  :entities-by-name entities-by-name
+                  :ids-to-entity-names {}
+                  :keywords-without-inverses-by-name 
+                  (update-vals entities-by-name
+                               (fn [entity]
+                                 (concat
+                                  [(t/unique-datomic-identifier entity)]
+                                  (map t/datomic-name 
+                                       (concat (vals (:attributes entity))
+                                               (vals (:datomic-relationships entity)))))))}}})
+
+(defn truncate-db [database]
+  (update database :snapshots #(select-keys % (:newest-snapshot-idx database))))

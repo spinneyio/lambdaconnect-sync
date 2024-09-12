@@ -89,7 +89,7 @@
   (testing "Schema from model"
     (let [model (mp/entities-by-name (b/load-model-fixture "test-model-0.xml"))
           schema (mp/datomic-schema model)]
-      (is (= (+ 37 8 (count model)) (count schema)))))
+      (is (= (+ 43 8 (count model)) (count schema)))))
   
   (testing "User info"
     (let [model (mp/entities-by-name (b/load-model-fixture "test-model-0.xml"))]

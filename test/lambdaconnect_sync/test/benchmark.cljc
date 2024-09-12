@@ -30,7 +30,7 @@
        (lsm/create-db "xxx")))
 
 
-(defn test-sync-performance [vertices edges]
+(defn test-sync-performance [vertices edges slave-mode?]
   (tufte/add-basic-println-handler! {})
   (println "Benchmarking graph processing. Using " vertices "vertices and" edges "edges.")
   (let [config {:log nil 
@@ -46,29 +46,42 @@
                          :FILocation/topHash  #(s/gen #{"aaa"})
                          :FILocation/leftHash  #(s/gen #{"aaa"})
                          :FILocation/rightHash   #(s/gen #{"aaa"})})
-        [test-graph gen-time] (bench (graph/generate-entity-graph ebn :vertices vertices :edges edges))
+        [test-graph gen-time] (bench (graph/generate-entity-graph ebn :vertices vertices :edges edges :create-sync-revisions? true))
         _ (println "Took" gen-time "seconds to generate graph." )
         [[tx] push-gen-time] (bench (first (profile {} (mapv (fn [_] (sync/push-transaction {:config config 
                                                                                              :incoming-json test-graph 
                                                                                              :snapshot db 
                                                                                              :entities-by-name ebn 
-                                                                                             :now now})) 
+                                                                                             :now now
+                                                                                             :slave-mode? slave-mode?
+                                                                                             :sync-revision-for-slave-mode 1})) 
                                                              (range 5)))))
         push-gen-time (/ push-gen-time 5)
         _ (println "Took" push-gen-time "seconds to generate push.")
         [new-db speculation-time] (bench (profile {} (p :whole-speculate (db/speculate config db tx))))
         _ (println "Took" speculation-time "seconds to integrate push.")
-        [pull-output pull-time] (bench (sync/pull config (into {} (map (fn [n] [n 0]) (keys ebn))) nil new-db ebn nil))
+        [pull-output pull-time] (bench (sync/pull {:config config
+                                                   :incoming-json  (into {} (map (fn [n] [n 0]) (keys ebn)))
+                                                   :snapshot new-db 
+                                                   :entities-by-name ebn
+                                                   :slave-mode? slave-mode?}))
         _ (println "Took" pull-time "seconds to generate pull.")
         #?@(:cljs [[js-version js-time] (bench (clj->js pull-output))])
         #?@(:cljs [_ (println "Took" js-time "seconds to convert output to JS data structures.")])
-        [[tx] push-gen-time] (bench (sync/push-transaction config test-graph nil new-db ebn nil now))
+        [[tx] push-gen-time] (bench (sync/push-transaction {:config config 
+                                                            :incoming-json test-graph 
+                                                            :snapshot new-db 
+                                                            :entities-by-name ebn 
+                                                            :now #?(:cljs (js/Date.) :clj (java.util.Date.))
+                                                            :slave-mode? slave-mode?
+                                                            :sync-revision-for-slave-mode 1}))
         _ (println "Took" push-gen-time "seconds to generate push again: " tx)]
     nil))
 
 (deftest benchmarks
   (testing "2000 5000"
-    (test-sync-performance 2000 5000)))
+    (test-sync-performance 2000 5000 false)
+    (test-sync-performance 2000 5000 true)))
 
 
 

@@ -56,7 +56,13 @@
                         {:db/ident              :app/active
                          :db/valueType          :db.type/boolean
                          :db/cardinality        :db.cardinality/one
-                         :db/doc                "If false, it means the entity was deleted"}])
+                         :db/doc                "If false, it means the entity was deleted"}
+                        
+                        {:db/ident              :app/syncRevisionFromMaster
+                         :db/valueType          :db.type/long
+                         :db/cardinality        :db.cardinality/one
+                         :db/doc                "For slave instances saves the sync revision from master"}
+                        ])
     @(d/transact @conn (mp/datomic-schema entities-by-name))   
     (mp/specs entities-by-name generators)
     (try (f)
