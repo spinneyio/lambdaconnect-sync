@@ -320,7 +320,8 @@
                                    conflict-resolved-object (conflicts/resolve-modification-conflicts 
                                                              config 
                                                              db-object 
-                                                             (if slave-mode? (assoc object :app/syncRevision sync-revision-for-slave-mode) object) 
+                                                             (if (and slave-mode? sync-revision-for-slave-mode) 
+                                                               (assoc object :app/syncRevision sync-revision-for-slave-mode) object) 
                                                              entity 
                                                              internal-user 
                                                              snapshot)
@@ -349,8 +350,10 @@
                                                                              (cas db-id k (k dbo-s-a) v))
                                                                            modified-s-attributes)
                                                                       [])
-                                   special-modification-transaction (if (and slave-mode? (not= (:app/syncRevision object) 
-                                                                                               (:app/syncRevisionFromMaster db-object))) 
+                                   special-modification-transaction (if (and slave-mode? 
+                                                                             (:app/syncRevision object)
+                                                                             (not= (:app/syncRevision object) 
+                                                                                   (:app/syncRevisionFromMaster db-object))) 
                                                                       (conj special-modification-transaction [:db/add db-id :app/syncRevisionFromMaster (:app/syncRevision object)])
                                                                       special-modification-transaction)
                                         ; ------ relationships -------
@@ -847,8 +850,7 @@
    (assert incoming-json)
    (assert snapshot)
    (assert entities-by-name)
-   (assert (if slave-mode? (and (not scoping-edn)
-                                sync-revision-for-slave-mode) true) "No scoping allowed for slave mode. :sync-revision-for-slave-mode must be present.")
+   (assert (if slave-mode? (not scoping-edn) true) "No scoping allowed for slave mode. ")
    (let [now (or now #?(:clj (java.util.Date.) :cljs (js/Date.)))
          config (if (:driver config)
                   config

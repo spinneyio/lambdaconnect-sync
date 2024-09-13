@@ -6,7 +6,7 @@
 target/*
 node_modules/*
 __tests__/cljs-runtime/*
-__tests__/cljs_tests.js
+__tests__/cljs-tests.js
 .shadow-cljs/*
 pom.xml
 pom.xml.asc
