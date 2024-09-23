@@ -289,7 +289,11 @@
                           :collection-content
                           old-target-value]
                          #(do
-                            (assert (= entity-id (attribute-key %)))
+                            (assert (= new-value (:db/id (attribute-key %))) 
+                                    (str "ID: " entity-id " ak: " attribute-key " old value: " old-value " new value " new-value "\n"
+                                         "OLD TARGET VALUE: " old-target-value "\n"
+                                         "(ak %): " (attribute-key %) "\n"
+                                         "Whole O: " (with-out-str (pprint %))))
                             (dissoc % attribute-key)))
 
               true (assoc-in [:collections
@@ -735,4 +739,7 @@
                                                (vals (:datomic-relationships entity)))))))}}})
 
 (defn truncate-db [database]
-  (update database :snapshots #(select-keys % (:newest-snapshot-idx database))))
+  (update database :snapshots #(select-keys % [(:newest-snapshot-idx database)])))
+
+  
+
