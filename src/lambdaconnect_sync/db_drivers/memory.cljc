@@ -735,4 +735,7 @@
                                                (vals (:datomic-relationships entity)))))))}}})
 
 (defn truncate-db [database]
-  (update database :snapshots #(select-keys % (:newest-snapshot-idx database))))
+  (update database :snapshots #(select-keys % [(:newest-snapshot-idx database)])))
+
+  
+
