@@ -81,7 +81,10 @@
   (assert entities-by-name)
   (assert (or (not scoping-constants) (and scoping-edn (fn? scoping-constants) (not (:constants scoping-edn)))))
   (try    
-    (let [scoping-edn-with-constants
+    (let [config (if (:driver config)
+                   config
+                   (assoc config :driver (datomic-driver/->DatomicDatabaseDriver config)))
+          scoping-edn-with-constants
           (if scoping-constants 
             (assoc scoping-edn :constants (scoping-constants snapshot internal-user))
             scoping-edn)
