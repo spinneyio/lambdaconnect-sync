@@ -864,7 +864,7 @@
                                            now
                                            slave-mode?
                                            sync-revision-for-slave-mode)]
-     (scoped-push-transaction params
+     (scoped-push-transaction (assoc params :config config)
                        primer
                        {:rejected-objects {} :rejected-fields {}} 
                        nil)))
