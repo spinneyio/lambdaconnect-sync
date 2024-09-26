@@ -18,7 +18,7 @@
         <attribute name="updatedAt" attributeType="Date" usesScalarValueType="NO" syncable="YES"/>
         <attribute name="uuid" attributeType="UUID" usesScalarValueType="NO" syncable="YES"/>
         <relationship name="reservation" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="FOReservationTemplate" inverseName="discount" inverseEntity="FOReservationTemplate" syncable="YES"/>
-        <relationship name="restaurant" maxCount="1" deletionRule="Nullify" destinationEntity="FORestaurant" inverseName="discounts" inverseEntity="FORestaurant" syncable="YES"/>
+        <relationship name="restaurant"  optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="FORestaurant" inverseName="discounts" inverseEntity="FORestaurant" syncable="YES"/>
     </entity>
     <entity name="FOFeedback" representedClassName="FOFeedback" syncable="YES">
         <attribute name="active" attributeType="Boolean" usesScalarValueType="YES" syncable="YES"/>
@@ -54,7 +54,7 @@
         <attribute name="picture" optional="YES" attributeType="URI" syncable="YES"/>
         <attribute name="updatedAt" optional="YES" attributeType="Date" usesScalarValueType="NO" syncable="YES"/>
         <attribute name="uuid" optional="YES" attributeType="UUID" usesScalarValueType="NO" syncable="YES"/>
-        <relationship name="restaurant" maxCount="1" deletionRule="Nullify" destinationEntity="FORestaurant" inverseName="pictures" inverseEntity="FORestaurant" syncable="YES"/>
+        <relationship name="restaurant"  optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="FORestaurant" inverseName="pictures" inverseEntity="FORestaurant" syncable="YES"/>
     </entity>
     <entity name="FOReservation" representedClassName="FOReservation" syncable="YES">
         <attribute name="active" attributeType="Boolean" usesScalarValueType="YES" syncable="YES"/>
@@ -64,7 +64,7 @@
         <attribute name="uuid" attributeType="UUID" usesScalarValueType="NO" syncable="YES"/>
         <relationship name="feedback" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="FOFeedback" inverseName="reservation" inverseEntity="FOFeedback" syncable="YES"/>
         <relationship name="template" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="FOReservationTemplate" inverseName="reservations" inverseEntity="FOReservationTemplate" syncable="YES"/>
-        <relationship name="user" maxCount="1" deletionRule="Nullify" destinationEntity="FOUser" inverseName="reservations" inverseEntity="FOUser" syncable="YES"/>
+        <relationship name="user"  optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="FOUser" inverseName="reservations" inverseEntity="FOUser" syncable="YES"/>
     </entity>
     <entity name="FOReservationTemplate" representedClassName="FOReservationTemplate" syncable="YES">
         <attribute name="active" attributeType="Boolean" usesScalarValueType="YES" syncable="YES"/>

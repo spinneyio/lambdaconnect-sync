@@ -2,10 +2,12 @@
   (:require [lambdaconnect-sync.utils :as u]
             [lambdaconnect-model.core :as mp]
             [lambdaconnect-model.tools :as t]
+            [lambdaconnect-model.spec :as lm-spec]
             [lambdaconnect-model.utils :as mu]
             [clojure.set :refer [subset? difference intersection union]]
             [clojure.spec.alpha :as spec]
             [lambdaconnect-sync.db :as db]
+            [clojure.repl :refer [doc]]
             [lambdaconnect-model.scoping :as scoping]
             [taoensso.tufte :as tufte :refer [defnp p profiled profile]]
             [clojure.pprint :refer [pprint]]
@@ -395,11 +397,8 @@
                                 (fn [json-obj]
                                   (let [transformed (mp/json-to-clojure json-obj entity)
                                         json-obj-spec (mp/spec-for-name (:name entity))]
-                                    (assert (spec/valid? json-obj-spec transformed)
-                                            (str "Spec failed: "
-                                                 (spec/explain-str json-obj-spec transformed)
-                                                 "\n for object: " transformed
-                                                 "\n spec: " json-obj-spec))                                            
+                                    (when-not (spec/valid? json-obj-spec transformed)                                      
+                                      (throw (lm-spec/exception-from-failed-spec json-obj-spec transformed)))                                            
                                     transformed)) objects)))))
           [input scoped-uuids] (p :scoped-push-input (scoped-push-input-for-user mapped-input internal-user entities-by-name snapshot))
           rel-objs-to-fetch (p :compute-rel-objs-to-fetch
@@ -851,6 +850,11 @@
    (assert snapshot)
    (assert entities-by-name)
    (assert (if slave-mode? (not scoping-edn) true) "No scoping allowed for slave mode. ")
+   (let [non-optional-rel-keywords (reduce (fn [failed entity] 
+                                             (concat failed (keep (fn [[k v]] (when-not (:optional v) (keyword (:name entity) k))) 
+                                                                  (:relationships entity))))
+                                           [] (vals entities-by-name))]
+     (assert (empty? non-optional-rel-keywords) (str "Only optional relationships allowed in synchronisation. The following relationships are not optional: " (pr-str non-optional-rel-keywords))))
    (let [now (or now #?(:clj (java.util.Date.) :cljs (js/Date.)))
          config (if (:driver config)
                   config

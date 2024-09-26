@@ -15,10 +15,10 @@
         <attribute name="updatedAt" attributeType="Date" usesScalarValueType="NO" syncable="YES"/>
         <attribute name="uuid" attributeType="String" maxValueString="36" syncable="YES"/>
         <relationship name="availableUsers" optional="YES" toMany="YES" deletionRule="Nullify" destinationEntity="FIGameAvailabilityIndication" inverseName="game" inverseEntity="FIGameAvailabilityIndication" syncable="YES"/>
-        <relationship name="location" maxCount="1" deletionRule="Nullify" destinationEntity="FILocation" inverseName="games" inverseEntity="FILocation" syncable="YES"/>
-        <relationship name="organiser" maxCount="1" deletionRule="Nullify" destinationEntity="FIUser" inverseName="organisedGames" inverseEntity="FIUser" syncable="YES"/>
+        <relationship name="location" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="FILocation" inverseName="games" inverseEntity="FILocation" syncable="YES"/>
+        <relationship name="organiser"  optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="FIUser" inverseName="organisedGames" inverseEntity="FIUser" syncable="YES"/>
         <relationship name="participants" optional="YES" toMany="YES" deletionRule="Nullify" destinationEntity="FIGameParticipance" inverseName="game" inverseEntity="FIGameParticipance" syncable="YES"/>
-        <relationship name="sport" maxCount="1" deletionRule="Nullify" destinationEntity="FISport" inverseName="games" inverseEntity="FISport" syncable="YES"/>
+        <relationship name="sport"  optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="FISport" inverseName="games" inverseEntity="FISport" syncable="YES"/>
     </entity>
     <entity name="FIGameAvailabilityIndication" representedClassName=".FIGameAvailabilityIndication" syncable="YES">
         <attribute name="active" attributeType="Boolean" defaultValueString="YES" usesScalarValueType="NO" syncable="YES"/>
@@ -26,8 +26,8 @@
         <attribute name="isRead" attributeType="Boolean" defaultValueString="NO" usesScalarValueType="NO" syncable="YES"/>
         <attribute name="updatedAt" attributeType="Date" usesScalarValueType="NO" syncable="YES"/>
         <attribute name="uuid" attributeType="String" maxValueString="36" syncable="YES"/>
-        <relationship name="game" maxCount="1" deletionRule="Nullify" destinationEntity="FIGame" inverseName="availableUsers" inverseEntity="FIGame" syncable="YES"/>
-        <relationship name="user" maxCount="1" deletionRule="Nullify" destinationEntity="FIUser" inverseName="availableForGames" inverseEntity="FIUser" syncable="YES"/>
+        <relationship name="game" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="FIGame" inverseName="availableUsers" inverseEntity="FIGame" syncable="YES"/>
+        <relationship name="user" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="FIUser" inverseName="availableForGames" inverseEntity="FIUser" syncable="YES"/>
     </entity>
     <entity name="FIGameParticipance" representedClassName=".FIGameParticipance" syncable="YES">
         <attribute name="active" attributeType="Boolean" defaultValueString="YES" usesScalarValueType="NO" syncable="YES"/>
@@ -35,8 +35,8 @@
         <attribute name="isRead" attributeType="Boolean" defaultValueString="NO" usesScalarValueType="NO" syncable="YES"/>
         <attribute name="updatedAt" attributeType="Date" usesScalarValueType="NO" syncable="YES"/>
         <attribute name="uuid" attributeType="String" maxValueString="36" syncable="YES"/>
-        <relationship name="game" maxCount="1" deletionRule="Nullify" destinationEntity="FIGame" inverseName="participants" inverseEntity="FIGame" syncable="YES"/>
-        <relationship name="user" maxCount="1" deletionRule="Nullify" destinationEntity="FIUser" inverseName="gamesConfirmed" inverseEntity="FIUser" syncable="YES"/>
+        <relationship name="game" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="FIGame" inverseName="participants" inverseEntity="FIGame" syncable="YES"/>
+        <relationship name="user" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="FIUser" inverseName="gamesConfirmed" inverseEntity="FIUser" syncable="YES"/>
     </entity>
     <entity name="FILocation" representedClassName=".FILocation" syncable="YES">
         <attribute name="active" attributeType="Boolean" defaultValueString="YES" usesScalarValueType="NO" syncable="YES"/>
@@ -66,8 +66,8 @@
         <attribute name="text" optional="YES" attributeType="String" minValueString="1" maxValueString="1024" syncable="YES"/>
         <attribute name="updatedAt" attributeType="Date" usesScalarValueType="NO" syncable="YES"/>
         <attribute name="uuid" attributeType="String" maxValueString="36" syncable="YES"/>
-        <relationship name="receiver" maxCount="1" deletionRule="Nullify" destinationEntity="FIUser" inverseName="messagesReceived" inverseEntity="FIUser" syncable="YES"/>
-        <relationship name="sender" maxCount="1" deletionRule="Nullify" destinationEntity="FIUser" inverseName="messagesSent" inverseEntity="FIUser" syncable="YES"/>
+        <relationship name="receiver" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="FIUser" inverseName="messagesReceived" inverseEntity="FIUser" syncable="YES"/>
+        <relationship name="sender"  optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="FIUser" inverseName="messagesSent" inverseEntity="FIUser" syncable="YES"/>
     </entity>
     <entity name="FISport" representedClassName=".FISport" syncable="YES">
         <attribute name="active" attributeType="Boolean" defaultValueString="YES" usesScalarValueType="NO" syncable="YES"/>
@@ -95,7 +95,7 @@
         <attribute name="pushNotificationsEnabled" attributeType="Boolean" defaultValueString="YES" usesScalarValueType="NO" syncable="YES"/>
         <attribute name="updatedAt" attributeType="Date" usesScalarValueType="NO" syncable="YES"/>
         <attribute name="uuid" attributeType="String" maxValueString="36" syncable="YES"/>
-        <relationship name="address" maxCount="1" deletionRule="Nullify" destinationEntity="FILocation" inverseName="users" inverseEntity="FILocation" syncable="YES"/>
+        <relationship name="address"  optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="FILocation" inverseName="users" inverseEntity="FILocation" syncable="YES"/>
         <relationship name="availableForGames" optional="YES" toMany="YES" deletionRule="Nullify" destinationEntity="FIGameAvailabilityIndication" inverseName="user" inverseEntity="FIGameAvailabilityIndication" syncable="YES"/>
         <relationship name="gamesConfirmed" optional="YES" toMany="YES" deletionRule="Nullify" destinationEntity="FIGameParticipance" inverseName="user" inverseEntity="FIGameParticipance" syncable="YES"/>
         <relationship name="messagesReceived" optional="YES" toMany="YES" deletionRule="Nullify" destinationEntity="FIMessage" inverseName="receiver" inverseEntity="FIMessage" syncable="YES"/>
