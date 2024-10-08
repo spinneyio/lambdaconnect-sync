@@ -6,6 +6,7 @@
    [lambdaconnect-sync.utils :as u]
    [lambdaconnect-sync.core :as sync]
    [lambdaconnect-sync.db :as db]
+   [lambdaconnect-sync.db-drivers.memory :as mem]
    [clojure.string :refer [starts-with?]]           
    [clojure.pprint :refer [pprint]]
    
@@ -171,3 +172,49 @@
                                                     "startHour" "15:15"
                                                     "uuid" "7228d756-1af5-4d3c-9b10-471461fde996"}]} nil after-import entities-by-name nil)]
           (is (empty? (filter #(= :db/retract (first %)) transaction2)) (str "There should be no retraction in transaction " (into [] transaction2))))))))
+
+
+
+(deftest sorting-filtering 
+  (testing "filling the database"
+    (let [empty-db @b/conn
+          entities-by-name (mp/entities-by-name (b/load-model-fixture "model2.xml"))
+          test-json (b/slurp-fixture "fixtures2.json")]
+      (testing "push;"
+        (let [[transaction] (sync/push-transaction b/mobile-sync-config test-json nil empty-db entities-by-name nil)
+              after-import (db/speculate b/mobile-sync-config empty-db transaction)
+              resolve-ids (fn [ids] (db/get-objects-by-ids b/mobile-sync-config (entities-by-name "FOLocalization") ids after-import))
+
+
+              ids1 (mem/get-paginated-collection after-import "FOLocalization" 0 100 [{:key :FOLocalization/city :direction 1}] nil)
+              results1 (map :FOLocalization/city (resolve-ids ids1))
+
+              ids2 (mem/get-paginated-collection after-import "FOLocalization" 0 100 [{:key :FOLocalization/city :direction -1}] nil)
+              results2 (map :FOLocalization/city (resolve-ids ids2))
+
+              ids3 (mem/get-paginated-collection after-import "FOLocalization" 0 100 
+                                                 [{:key :FOLocalization/logitude :direction -1}] 
+                                                 {:key :FOLocalization/city :where-fn #(= %  "ul. Żurawia 6/12")})
+              results3 (map #(select-keys % [:FOLocalization/city :FOLocalization/logitude]) (resolve-ids ids3))
+
+              ids4 (mem/get-paginated-collection after-import "FOLocalization" 0 100 
+                                                 [{:key :FOLocalization/logitude :direction -1}] 
+                                                 {:condition-type :and :conditions [{:key :FOLocalization/city :where-fn #(= %  "ul. Żurawia 6/12")}
+                                                                                    {:key :FOLocalization/logitude :where-fn #(> %  20.0)}]})
+              results4 (map #(select-keys % [:FOLocalization/city :FOLocalization/logitude]) (resolve-ids ids4))]
+          (is (= (seq '(84 18 73 169 138 23 142 195 172 139 106 60 63 89 104 59)) 
+                 ids1))
+          (is (= "ul. Ulicowa 12" (second results1)))
+
+          (is (= (seq '(63 89 104 59 84 18 73 169 138 23 142 195 172 139 106 60)) 
+                 ids2))
+
+          (is (= "ul. Żurawia 6/12" (second results2)))
+          (is (= #:FOLocalization{:city "ul. Żurawia 6/12",
+                                  :logitude 20.109153254229014} (first results3)))
+
+          (is (= 2 (count results4)))
+          (is (empty? (filter #(< % 20.0) (map :FOLocalization/logitude results4))))
+
+          
+          )))))

@@ -741,5 +741,81 @@
 (defn truncate-db [database]
   (update database :snapshots #(select-keys % [(:newest-snapshot-idx database)])))
 
+
+;; get access
   
+(s/def ::key #(and (keyword %) (namespace %)))
+(s/def ::direction #{-1 1})
+
+(s/def ::where-fn fn?)
+(s/def ::sort (s/keys :req-un [::key ::direction]))
+(s/def ::sorts (s/coll-of ::sort))
+
+(s/def ::simple-condition (s/keys :req-un [::key ::where-fn]))
+(s/def ::condition-type #{:and :or})
+(s/def ::condition (s/or :simple ::simple-condition :composite ::composite-condition))
+(s/def ::conditions (s/coll-of ::condition))
+(s/def ::composite-condition (s/keys :req-un [::condition-type ::conditions]))
+
+(s/def ::input-condition (s/nilable ::condition))
+
+
+(defn get-collection [snapshot entity-name]
+  (let [coll (get-in snapshot [:snapshots (:newest-snapshot-idx snapshot) :collections entity-name :collection-content])]
+    (assert coll (str "No collection with name '" entity-name "' present in database."))
+    coll))
+
+(defn get-stable-coll-ids [snapshot entity-name]
+  (-> (get-collection snapshot entity-name)
+      (keys)
+      (sort)))
+
+(defmulti execute-condition (fn [condition _ _ _]  (or (:condition-type condition) :simple)))
+
+(defmethod execute-condition :simple [{:keys [key where-fn]} obj attributes entity-name]
+  (assert (attributes key) (str "Unknown attribute key: " key " for entity " entity-name))
+  (-> obj key where-fn))
+
+(defmethod execute-condition :and [{:keys [conditions]} obj attributes entity-name]
+  (reduce #(and %1 %2) true (map #(execute-condition % obj attributes entity-name) conditions)))
+
+(defmethod execute-condition :or [{:keys [conditions]} obj attributes entity-name]
+  (reduce #(or %1 %2) false (map #(execute-condition % obj attributes entity-name) conditions)))
+
+
+(defn get-paginated-collection 
+  ([snapshot entity-name offset limit sorts condition]
+   {:pre [(s/valid? ::sorts sorts)
+          (s/valid? ::input-condition condition)]}      
+   (let [entity (get-in snapshot [:snapshots (:newest-snapshot-idx snapshot) :entities-by-name entity-name])
+         _ (assert entity (str "Unknown entity: " entity-name))
+         attributes (->> entity
+                         :attributes
+                         (vals)
+                         (map t/datomic-name)
+                         (set))
+         sorts (if (seq sorts) sorts [{:key :app/createdAt :direction 1}])
+         condition  (if-not condition {:key :app/active :where-fn identity}
+                            {:condition-type :and 
+                             :conditions [condition {:key :app/active :where-fn identity}]})
+         compare (fn [l r sorts] 
+                   (or (empty? sorts)
+                       (let [{:keys [key direction]} (first sorts)
+                             cmp (if (= direction 1) compare (comp - compare))
+                             ll (key l)
+                             rr (key r)]
+                         (assert (attributes key) (str "Unknown attribute key: " key " for entity " entity-name))
+                         (cond 
+                           (= ll rr) (recur ll rr (next sorts))
+                           (nil? ll) false 
+                           :default (cmp ll rr)))))]
+     (->> (get-collection snapshot entity-name)
+          (vals)
+          (filter #(execute-condition condition % attributes entity-name))
+          (sort #(compare %1 %2 sorts))
+          (map :db/id)
+          (drop offset)
+          (take limit))))
+  ([snapshot entity-name offset limit]
+   (get-paginated-collection snapshot entity-name offset limit [] nil)))
 
