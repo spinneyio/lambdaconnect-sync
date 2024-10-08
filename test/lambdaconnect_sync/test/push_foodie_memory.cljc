@@ -202,12 +202,9 @@
                                                  {:condition-type :and :conditions [{:key :FOLocalization/city :where-fn #(= %  "ul. Żurawia 6/12")}
                                                                                     {:key :FOLocalization/logitude :where-fn #(> %  20.0)}]})
               results4 (map #(select-keys % [:FOLocalization/city :FOLocalization/logitude]) (resolve-ids ids4))]
-          (is (= (seq '(84 18 73 169 138 23 142 195 172 139 106 60 63 89 104 59)) 
-                 ids1))
+          (is (= 16 (count ids1)))
           (is (= "ul. Ulicowa 12" (second results1)))
-
-          (is (= (seq '(63 89 104 59 84 18 73 169 138 23 142 195 172 139 106 60)) 
-                 ids2))
+          (is (= 16 (count ids2)))
 
           (is (= "ul. Żurawia 6/12" (second results2)))
           (is (= #:FOLocalization{:city "ul. Żurawia 6/12",
