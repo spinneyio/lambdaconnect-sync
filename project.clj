@@ -1,4 +1,4 @@
-(defproject io.spinney/lambdaconnect-sync "1.0.31"
+(defproject io.spinney/lambdaconnect-sync "1.0.33"
   :description "Synchronisation library"
   :url "https://github.com/spinneyio/lambdaconnect-sync"
   :license {:name "EPL-2.0 OR GPL-2.0-or-later WITH Classpath-exception-2.0"
@@ -6,7 +6,7 @@
   :dependencies [[org.clojure/spec.alpha "0.5.238"]
                  [org.clojure/clojure "1.11.4"]
                  [org.clojure/test.check "1.1.1"]
-                 [io.spinney/lambdaconnect-model "1.0.27"]
+                 [io.spinney/lambdaconnect-model "1.0.29"]
                  [com.taoensso/tufte "2.6.3"]
                  [thheller/shadow-cljs "2.28.12"]]
   :target-path "target/%s"

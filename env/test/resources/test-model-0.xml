@@ -15,8 +15,8 @@
         <attribute name="title" attributeType="String" minValueString="3" maxValueString="1024" syncable="YES"/>
         <attribute name="updatedAt" attributeType="Date" usesScalarValueType="NO" syncable="YES"/>
         <attribute name="uuid" attributeType="String" maxValueString="36" syncable="YES"/>
-        <relationship name="location" maxCount="1" deletionRule="Nullify" destinationEntity="LALocation" inverseName="games" inverseEntity="LALocation" syncable="YES"/>
-        <relationship name="organiser" maxCount="1" deletionRule="Nullify" destinationEntity="LAUser" inverseName="organisedGames" inverseEntity="LAUser" syncable="YES"/>
+        <relationship name="location" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="LALocation" inverseName="games" inverseEntity="LALocation" syncable="YES"/>
+        <relationship name="organiser" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="LAUser" inverseName="organisedGames" inverseEntity="LAUser" syncable="YES"/>
         <relationship name="ticketsSold" optional="YES" toMany="YES" deletionRule="Nullify" destinationEntity="LATicketsSold" inverseName="game" inverseEntity="LATicketsSold" syncable="YES"/>
         <relationship name="teamsPlayed" optional="YES" toMany="YES" deletionRule="Nullify" destinationEntity="LATeam" inverseName="playedIn" inverseEntity="LATeam" syncable="YES"/>
         <userInfo>
@@ -59,7 +59,7 @@
         <attribute name="uuid" attributeType="String" maxValueString="36" syncable="YES"/>
         <attribute name="name" attributeType="String" maxValueString="36" syncable="YES"/>
         <attribute name="anthemTitle" attributeType="String" maxValueString="36" syncable="YES"/>
-        <relationship name="organiser" maxCount="1" deletionRule="Nullify" destinationEntity="LAUser" inverseName="playsFor" inverseEntity="LAUser" syncable="YES"/>
+        <relationship name="organiser" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="LAUser" inverseName="playsFor" inverseEntity="LAUser" syncable="YES"/>
         <relationship name="tickets" optional="YES" toMany="YES" deletionRule="Nullify" destinationEntity="LATicketsSold" inverseName="teamsInvolved" inverseEntity="LATicketsSold"/>
         <relationship name="playedIn" optional="YES" toMany="YES" deletionRule="Nullify" destinationEntity="LAGame" inverseName="teamsPlayed" inverseEntity="LAGame" syncable="YES"/>
     </entity>
@@ -70,7 +70,7 @@
         <attribute name="uuid" attributeType="String" maxValueString="36" syncable="YES"/>
         <attribute name="uuid" attributeType="String" maxValueString="36" syncable="YES"/>
         <attribute name="price" attributeType="Double" maxValueString="36" syncable="YES"/>
-        <relationship name="location" maxCount="1" deletionRule="Nullify" destinationEntity="LALocation" inverseName="ticketsSold" inverseEntity="LALocation" syncable="YES"/>
+        <relationship name="location" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="LALocation" inverseName="ticketsSold" inverseEntity="LALocation" syncable="YES"/>
         <relationship name="game" optional="YES" toMany="YES" deletionRule="Nullify" destinationEntity="LAGame" inverseName="ticketsSold" inverseEntity="LAGame" syncable="YES"/>
         <relationship name="teamsInvolved" optional="YES" toMany="YES" deletionRule="Nullify" destinationEntity="LATeam" inverseName="tickets" inverseEntity="LATeam"/> 
     </entity>
@@ -91,7 +91,7 @@
         <attribute name="pushNotificationsEnabled" attributeType="Boolean" defaultValueString="YES" usesScalarValueType="NO" syncable="YES"/>
         <attribute name="updatedAt" attributeType="Date" usesScalarValueType="NO" syncable="YES"/>
         <attribute name="uuid" attributeType="String" maxValueString="36" syncable="YES"/>
-        <relationship name="address" maxCount="1" deletionRule="Nullify" destinationEntity="LALocation" inverseName="users" inverseEntity="LALocation" syncable="YES"/>
+        <relationship name="address" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="LALocation" inverseName="users" inverseEntity="LALocation" syncable="YES"/>
         <relationship name="organisedGames" optional="YES" toMany="YES" deletionRule="Nullify" destinationEntity="LAGame" inverseName="organiser" inverseEntity="LAGame" syncable="YES"/>
         <relationship name="playsFor" optional="YES" toMany="YES" deletionRule="Nullify" destinationEntity="LATeam" inverseName="organiser" inverseEntity="LATeam" syncable="YES"/>
     </entity>
