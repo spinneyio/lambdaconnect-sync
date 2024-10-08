@@ -1,5 +1,5 @@
 (ns lambdaconnect-sync.utils
-  (:require [clojure.set :refer [union]]
+  (:require [clojure.set :refer [union]]            
             [lambdaconnect-model.utils :as u]))
 
 (defn join-maps
@@ -31,4 +31,5 @@
 #?(:clj (defn exception-description [e]
           (str (class e) " - " (.getMessage e) "\nReceived in: " (stacktrace e)))
    :cljs (defn exception-description [e] (str e)))
+
 
