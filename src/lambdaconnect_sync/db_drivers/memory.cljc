@@ -806,34 +806,36 @@
          condition  (if-not condition {:key :app/active :where-fn identity}
                             {:condition-type :and 
                              :conditions [condition {:key :app/active :where-fn identity}]})
-         p-compare (fn [l r sorts]
-                   (if (empty? sorts) 0
-                       (let [{:keys [key direction options]} (first sorts)
-                             string-attr? (= :db.type/string 
-                                             (-> key name attributes-by-name :type))
 
-                             _ (assert (not (and (options :nulls-first) (options :nulls-last))))
-                             _ (when (:case-insensitive options)
-                                 (assert string-attr? "Only string attributes can be compared in a case insensitive way"))
+         comparators (map (fn [{:keys [key direction options]}]
+                            (let [string-attr? (= :db.type/string 
+                                                  (-> key name attributes-by-name :type))
+                                  trafo (if (options :case-insensitive) 
+                                          #(some-> % key lower-case)
+                                          key)
+                                  null-ret (if (options :nulls-first) -1 1)
+                                  cmp-with-null (if (not (or (options :nulls-first) (options :nulls-last)))
+                                                  compare
+                                                  #(cond (and (nil? %1) %2) null-ret
+                                                         (and %1 (nil? %2)) (- null-ret)
+                                                         :default (compare %1 %2)))
+                                  cmp (if (= direction 1) cmp-with-null (comp - cmp-with-null))]
+                              (assert (attribute-keys key) (str "Unknown attribute key: " key " for entity " entity-name))
+                              (assert (not (and (options :nulls-first) (options :nulls-last))))
+                              (when (:case-insensitive options)
+                                (assert string-attr? "Only string attributes can be compared in a case insensitive way"))
+                              #(cmp (trafo %1) (trafo %2)))) sorts)
 
-                             null-ret (if (options :nulls-first) -1 1)
-                             cmp-with-null (if (not (or (options :nulls-first) (options :nulls-last)))
-                                             compare
-                                             #(cond (and (nil? %1) %2) null-ret
-                                                    (and %1 (nil? %2)) (- null-ret)
-                                                    :default (compare %1 %2)))
-                             cmp (if (= direction 1) cmp-with-null (comp - cmp-with-null))
-                             trafo (comp (if (options :case-insensitive) #(if % (lower-case %)) identity) key)
-                             ll (trafo l)
-                             rr (trafo r)]
-                         (assert (attribute-keys key) (str "Unknown attribute key: " key " for entity " entity-name))
-                         (cond 
-                           (= ll rr) (recur l r (next sorts))
-                           :default (cmp ll rr)))))]
+         p-compare (fn [l r comparators]
+                     (if (empty? comparators) 0
+                         (let [[custom-comparator & comparators] comparators
+                             compare-value (custom-comparator l r)]
+                           (if (zero? compare-value) (recur l r comparators)
+                               compare-value))))]
      (->> (get-collection snapshot entity-name)
           (vals)
           (filter #(execute-condition condition % attribute-keys entity-name))
-          (sort #(p-compare %1 %2 sorts))
+          (sort #(p-compare %1 %2 comparators))
           (map :db/id)
           (drop (* page per-page))
           (take per-page))))
