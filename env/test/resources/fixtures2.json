@@ -96,6 +96,49 @@
       "createdAt" : "2019-06-07T10:11:28.452Z",
       "user" : null
     },
+
+    {
+      "uuid" : "D54CE70C-183D-44DD-002E-B09E2F82D981",
+      "updatedAt" : "2019-06-07T10:11:34.630Z",
+      "topHash" : null,
+      "logitude" : 19.002658640698409,
+      "active" : 1,
+      "leftHash" : "aaa",
+      "latitude" : 50.860415825115815,
+      "bottomHash" : null,
+      "street" : null,
+      "city" : "Kolibrowa",
+      "number" : null,
+      "rightHash" : null,
+      "restaurant" : null,
+      "zipCode" : null,
+      "country" : null,
+      "createdAt" : "2019-06-07T10:11:33.452Z",
+      "user" : null
+    },
+
+    {
+      "uuid" : "D54CE70C-183D-44DD-012E-B09E2F82D981",
+      "updatedAt" : "2019-06-07T10:11:34.630Z",
+      "topHash" : null,
+      "logitude" : 19.003658640698409,
+      "active" : 1,
+      "leftHash" : null,
+      "latitude" : 50.860415825115815,
+      "bottomHash" : null,
+      "street" : null,
+      "city" : "kolibrowa",
+      "number" : null,
+      "rightHash" : null,
+      "restaurant" : null,
+      "zipCode" : null,
+      "country" : null,
+      "createdAt" : "2019-06-07T10:11:33.452Z",
+      "user" : null
+    },
+
+
+
     {
       "uuid" : "A423DD6E-7897-4AF8-B868-AF87214A1EFD",
       "updatedAt" : "2019-06-07T10:11:28.630Z",

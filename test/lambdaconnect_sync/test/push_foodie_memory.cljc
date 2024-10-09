@@ -175,7 +175,7 @@
 
 
 
-(deftest sorting-filtering 
+(deftest ^:test-refresh/focus sorting-filtering 
   (testing "filling the database"
     (let [empty-db @b/conn
           entities-by-name (mp/entities-by-name (b/load-model-fixture "model2.xml"))
@@ -183,48 +183,127 @@
       (testing "push;"
         (let [[transaction] (sync/push-transaction b/mobile-sync-config test-json nil empty-db entities-by-name nil)
               after-import (db/speculate b/mobile-sync-config empty-db transaction)
-              resolve-ids (fn [ids] (db/get-objects-by-ids b/mobile-sync-config (entities-by-name "FOLocalization") ids after-import))
+              resolve-ids (fn [ids] (db/get-objects-by-ids b/mobile-sync-config (entities-by-name "FOLocalization") ids after-import))]
 
+          (testing "Sort by name" 
+            (let [ids (mem/get-paginated-collection after-import "FOLocalization" 0 100 [{:key :FOLocalization/city :direction 1}] nil)
+                  results (map :FOLocalization/city (resolve-ids ids))]
+              (is (= 18 (count ids)))
+              (is (= "kolibrowa" (second results)))))
 
-              ids1 (mem/get-paginated-collection after-import "FOLocalization" 0 100 [{:key :FOLocalization/city :direction 1}] nil)
-              results1 (map :FOLocalization/city (resolve-ids ids1))
+          (testing "Sort by name descending" 
+            (let [ids (mem/get-paginated-collection after-import "FOLocalization" 0 100 [{:key :FOLocalization/city :direction -1}] nil)
+                  results (map :FOLocalization/city (resolve-ids ids))]              
+              (is (= 18 (count ids)))
+              (is (= "ul. Żurawia 6/12" (second results)))
+              (is (= '("ul. Żurawia 6/12"
+                       "ul. Żurawia 6/12"
+                       "ul. Żurawia 6/12"
+                       "ul. Żurawia 6/12"
+                       "ul. Ulicowa 12"
+                       "ul. Ulicowa 12"
+                       "ul. Ulicowa 12"
+                       "ul. Ulicowa 12"
+                       "ul. Ulicowa 12"
+                       "ul. Ulicowa 12"
+                       "ul. Ulicowa 12"
+                       "ul. Ulicowa 12"
+                       "ul. Ulicowa 12"
+                       "ul. Ulicowa 12"
+                       "ul. Ulicowa 12"
+                       "ul. Ulicowa 12"
+                       "kolibrowa"
+                       "Kolibrowa") results))))
 
-              ids2 (mem/get-paginated-collection after-import "FOLocalization" 0 100 [{:key :FOLocalization/city :direction -1}] nil)
-              results2 (map :FOLocalization/city (resolve-ids ids2))
+          (testing "Sort by logitude descending + filter by name"
+            (let [ids (mem/get-paginated-collection after-import "FOLocalization" 0 100 
+                                                  [{:key :FOLocalization/logitude :direction -1}] 
+                                                  {:key :FOLocalization/city :where-fn #(= %  "ul. Żurawia 6/12")})
+                  results (map #(select-keys % [:FOLocalization/city :FOLocalization/logitude]) (resolve-ids ids))]
+              (is (= #:FOLocalization{:city "ul. Żurawia 6/12",
+                                      :logitude 20.109153254229014} (first results)))))
+          
+          (testing "Sort by logitude descending + filter by name and logitude"
+            (let [ids (mem/get-paginated-collection after-import "FOLocalization" 0 100 
+                                                    [{:key :FOLocalization/logitude :direction -1}] 
+                                                    {:condition-type :and :conditions [{:key :FOLocalization/city :where-fn #(= %  "ul. Żurawia 6/12")}
+                                                                                       {:key :FOLocalization/logitude :where-fn #(> %  20.0)}]})                                    
+                  results (map #(select-keys % [:FOLocalization/city :FOLocalization/logitude]) (resolve-ids ids))]
+                        (is (= 2 (count results)))
+                        (is (empty? (filter #(< % 20.0) (map :FOLocalization/logitude results))))))
 
-              ids3 (mem/get-paginated-collection after-import "FOLocalization" 0 100 
-                                                 [{:key :FOLocalization/logitude :direction -1}] 
-                                                 {:key :FOLocalization/city :where-fn #(= %  "ul. Żurawia 6/12")})
-              results3 (map #(select-keys % [:FOLocalization/city :FOLocalization/logitude]) (resolve-ids ids3))
+          (testing "Sort by city descending and logitude ascending + filter by logitude from a single and"
+            (let [ids (mem/get-paginated-collection after-import "FOLocalization" 0 100 
+                                                    [{:key :FOLocalization/city :direction -1}
+                                                     {:key :FOLocalization/logitude :direction 1}] 
+                                                    {:condition-type :and :conditions [{:key :FOLocalization/logitude :where-fn #(> %  19.7)}]})   
+                  results (map #(select-keys % [:FOLocalization/city :FOLocalization/logitude]) (resolve-ids ids))]
+              (is (= results '(#:FOLocalization{:city "ul. Żurawia 6/12", :logitude 19.7916142668045}
+                                #:FOLocalization{:city "ul. Żurawia 6/12",
+                                                 :logitude 20.033605325340403}
+                                #:FOLocalization{:city "ul. Żurawia 6/12",
+                                                 :logitude 20.109153254229014}
+                                #:FOLocalization{:city "ul. Ulicowa 12", :logitude 19.919015835763744}
+                                #:FOLocalization{:city "ul. Ulicowa 12", :logitude 19.996433962795617}
+                                #:FOLocalization{:city "ul. Ulicowa 12", :logitude 20.00282566170049}
+                                #:FOLocalization{:city "ul. Ulicowa 12", :logitude 20.11523327635091}
+                                #:FOLocalization{:city "ul. Ulicowa 12", :logitude 20.13399817567732})))))
 
-              ids4 (mem/get-paginated-collection after-import "FOLocalization" 0 100 
-                                                 [{:key :FOLocalization/logitude :direction -1}] 
-                                                 {:condition-type :and :conditions [{:key :FOLocalization/city :where-fn #(= %  "ul. Żurawia 6/12")}
-                                                                                    {:key :FOLocalization/logitude :where-fn #(> %  20.0)}]})
-              results4 (map #(select-keys % [:FOLocalization/city :FOLocalization/logitude]) (resolve-ids ids4))
+          (testing "Sort by city descending and logitude ascending + filter down by logitude from a single and"
+            (let [ids (mem/get-paginated-collection after-import "FOLocalization" 0 100 
+                                                    [{:key :FOLocalization/city :direction -1}
+                                                     {:key :FOLocalization/logitude :direction 1}] 
+                                                    {:condition-type :and :conditions [{:key :FOLocalization/logitude :where-fn #(< %  19.7)}]})   
+                  results (map #(select-keys % [:FOLocalization/city :FOLocalization/logitude]) (resolve-ids ids))]
+              (is (= results '(#:FOLocalization{:city "ul. Żurawia 6/12",
+                                                :logitude 19.55365864069841}
+                               #:FOLocalization{:city "ul. Ulicowa 12", :logitude 19.03030310673314}
+                               #:FOLocalization{:city "ul. Ulicowa 12", :logitude 19.07798234210828}
+                               #:FOLocalization{:city "ul. Ulicowa 12", :logitude 19.17957466636357}
+                               #:FOLocalization{:city "ul. Ulicowa 12", :logitude 19.332211814117727}
+                               #:FOLocalization{:city "ul. Ulicowa 12", :logitude 19.361832275276036}
+                               #:FOLocalization{:city "ul. Ulicowa 12", :logitude 19.463674071081314}
+                               #:FOLocalization{:city "ul. Ulicowa 12", :logitude 19.60787488523789}
+                               #:FOLocalization{:city "kolibrowa", :logitude 19.003658640698408}
+                               #:FOLocalization{:city "Kolibrowa", :logitude 19.00265864069841})))))
+          (testing "Sort by city descending CASE INSENSITIVE and logitude ascending + filter down by logitude from a single and"
+            (let [ids (mem/get-paginated-collection after-import "FOLocalization" 0 100 
+                                                    [{:key :FOLocalization/city :direction -1 :options [:case-insensitive]}
+                                                     {:key :FOLocalization/logitude :direction 1}] 
+                                                    {:condition-type :and :conditions [{:key :FOLocalization/logitude :where-fn #(< %  19.7)}]})   
+                  results (map #(select-keys % [:FOLocalization/city :FOLocalization/logitude]) (resolve-ids ids))]
+              (is (= results '(#:FOLocalization{:city "ul. Żurawia 6/12",
+                                                :logitude 19.55365864069841}
+                               #:FOLocalization{:city "ul. Ulicowa 12", :logitude 19.03030310673314}
+                               #:FOLocalization{:city "ul. Ulicowa 12", :logitude 19.07798234210828}
+                               #:FOLocalization{:city "ul. Ulicowa 12", :logitude 19.17957466636357}
+                               #:FOLocalization{:city "ul. Ulicowa 12", :logitude 19.332211814117727}
+                               #:FOLocalization{:city "ul. Ulicowa 12", :logitude 19.361832275276036}
+                               #:FOLocalization{:city "ul. Ulicowa 12", :logitude 19.463674071081314}
+                               #:FOLocalization{:city "ul. Ulicowa 12", :logitude 19.60787488523789}
+                               #:FOLocalization{:city "Kolibrowa", :logitude 19.00265864069841}
+                               #:FOLocalization{:city "kolibrowa", :logitude 19.003658640698408})))))
 
-              ids5 (mem/get-paginated-collection after-import "FOLocalization" 0 100 
-                                                 [{:key :FOLocalization/city :direction -1}
-                                                  {:key :FOLocalization/logitude :direction 1}] 
-                                                 {:condition-type :and :conditions [{:key :FOLocalization/logitude :where-fn #(> %  19.7)}]})
-              results5 (map #(select-keys % [:FOLocalization/city :FOLocalization/logitude]) (resolve-ids ids5))]          
-          (is (= 16 (count ids1)))
-          (is (= "ul. Ulicowa 12" (second results1)))
-          (is (= 16 (count ids2)))
+          (testing "Sort by left hash"
+            (let [ids (mem/get-paginated-collection after-import "FOLocalization" 0 100 
+                                                    [{:key :FOLocalization/leftHash :direction 1 :options [:case-insensitive]}
+                                                     {:key :FOLocalization/city :direction 1 :options [:case-insensitive]}] nil)   
+                  results (map #(select-keys % [:FOLocalization/city :FOLocalization/leftHash]) (resolve-ids ids))]
+              (is (not (:FOLocalization/leftHash (first results))))
+              (is (:FOLocalization/leftHash (last results)))))
 
-          (is (= "ul. Żurawia 6/12" (second results2)))
-          (is (= #:FOLocalization{:city "ul. Żurawia 6/12",
-                                  :logitude 20.109153254229014} (first results3)))
+          (testing "Sort by left hash, nulls to the top"
+            (let [ids (mem/get-paginated-collection after-import "FOLocalization" 0 100 
+                                                    [{:key :FOLocalization/leftHash :direction 1 :options [:nulls-first]}
+                                                     {:key :FOLocalization/city :direction 1 :options [:case-insensitive]}] nil)   
+                  results (map #(select-keys % [:FOLocalization/city :FOLocalization/leftHash]) (resolve-ids ids))]
+              (is (not (:FOLocalization/leftHash (first results))))
+              (is (:FOLocalization/leftHash (last results)))))
 
-          (is (= 2 (count results4)))
-          (is (empty? (filter #(< % 20.0) (map :FOLocalization/logitude results4))))
-          (is (= results5 '(#:FOLocalization{:city "ul. Żurawia 6/12", :logitude 19.7916142668045}
-                            #:FOLocalization{:city "ul. Żurawia 6/12",
-                                             :logitude 20.033605325340403}
-                            #:FOLocalization{:city "ul. Żurawia 6/12",
-                                             :logitude 20.109153254229014}
-                            #:FOLocalization{:city "ul. Ulicowa 12", :logitude 19.919015835763744}
-                            #:FOLocalization{:city "ul. Ulicowa 12", :logitude 19.996433962795617}
-                            #:FOLocalization{:city "ul. Ulicowa 12", :logitude 20.00282566170049}
-                            #:FOLocalization{:city "ul. Ulicowa 12", :logitude 20.11523327635091}
-                            #:FOLocalization{:city "ul. Ulicowa 12", :logitude 20.13399817567732}))))))))
+          (testing "Sort by left hash, nulls to the bottom"
+            (let [ids (mem/get-paginated-collection after-import "FOLocalization" 0 100 
+                                                    [{:key :FOLocalization/leftHash :direction 1 :options [:nulls-last]}
+                                                     {:key :FOLocalization/city :direction 1 :options [:case-insensitive]}] nil)   
+                  results (map #(select-keys % [:FOLocalization/city :FOLocalization/leftHash]) (resolve-ids ids))]
+              (is (:FOLocalization/leftHash (first results)))
+              (is (not (:FOLocalization/leftHash (last results)))))))))))

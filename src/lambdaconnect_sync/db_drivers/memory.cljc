@@ -7,6 +7,8 @@
             [lambdaconnect-model.tools :as t]
             [lambdaconnect-model.utils :as u]
             [clojure.pprint :refer [pprint]]
+            [clojure.walk :refer [prewalk postwalk]]
+            [clojure.string :refer [lower-case]]
             [clojure.set :refer [intersection union difference]]
             #?(:clj [clojure.spec.alpha :as s] 
                :cljs [cljs.spec.alpha :as s])))
@@ -746,9 +748,11 @@
   
 (s/def ::key qualified-keyword?)
 (s/def ::direction #{-1 1})
-
 (s/def ::where-fn fn?)
-(s/def ::sort (s/keys :req-un [::key ::direction]))
+(s/def ::option #{:case-insensitive :nulls-first :nulls-last})
+(s/def ::options (s/coll-of ::option))
+
+(s/def ::sort (s/keys :req-un [::key ::direction] :opt-un [::options]))
 (s/def ::sorts (s/coll-of ::sort))
 
 (s/def ::simple-condition (s/keys :req-un [::key ::where-fn]))
@@ -789,28 +793,46 @@
           (s/valid? ::input-condition condition)]}      
    (let [entity (get-in snapshot [:snapshots (:newest-snapshot-idx snapshot) :entities-by-name entity-name])
          _ (assert entity (str "Unknown entity: " entity-name))
-         attributes (->> entity
+         sorts (prewalk #(if (:direction %) 
+                           (if (:options %) (update % :options set) (assoc % :options #{}))
+                           %) sorts)
+         attribute-keys (->> entity
                          :attributes
                          (vals)
                          (map t/datomic-name)
                          (set))
+         attributes-by-name (-> entity :attributes)
          sorts (if (seq sorts) sorts [{:key :app/createdAt :direction 1}])
          condition  (if-not condition {:key :app/active :where-fn identity}
                             {:condition-type :and 
                              :conditions [condition {:key :app/active :where-fn identity}]})
          p-compare (fn [l r sorts]
                    (if (empty? sorts) 0
-                       (let [{:keys [key direction]} (first sorts)
-                             cmp (if (= direction 1) compare (comp - compare))
-                             ll (key l)
-                             rr (key r)]
-                         (assert (attributes key) (str "Unknown attribute key: " key " for entity " entity-name))
+                       (let [{:keys [key direction options]} (first sorts)
+                             string-attr? (= :db.type/string 
+                                             (-> key name attributes-by-name :type))
+
+                             _ (assert (not (and (options :nulls-first) (options :nulls-last))))
+                             _ (when (:case-insensitive options)
+                                 (assert string-attr? "Only string attributes can be compared in a case insensitive way"))
+
+                             null-ret (if (options :nulls-first) -1 1)
+                             cmp-with-null (if (not (or (options :nulls-first) (options :nulls-last)))
+                                             compare
+                                             #(cond (and (nil? %1) %2) null-ret
+                                                    (and %1 (nil? %2)) (- null-ret)
+                                                    :default (compare %1 %2)))
+                             cmp (if (= direction 1) cmp-with-null (comp - cmp-with-null))
+                             trafo (comp (if (options :case-insensitive) #(if % (lower-case %)) identity) key)
+                             ll (trafo l)
+                             rr (trafo r)]
+                         (assert (attribute-keys key) (str "Unknown attribute key: " key " for entity " entity-name))
                          (cond 
                            (= ll rr) (recur l r (next sorts))
                            :default (cmp ll rr)))))]
      (->> (get-collection snapshot entity-name)
           (vals)
-          (filter #(execute-condition condition % attributes entity-name))
+          (filter #(execute-condition condition % attribute-keys entity-name))
           (sort #(p-compare %1 %2 sorts))
           (map :db/id)
           (drop (* page per-page))
