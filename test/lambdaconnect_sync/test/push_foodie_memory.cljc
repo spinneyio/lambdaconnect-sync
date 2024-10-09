@@ -175,7 +175,7 @@
 
 
 
-(deftest ^:test-refresh/focus sorting-filtering 
+(deftest sorting-filtering 
   (testing "filling the database"
     (let [empty-db @b/conn
           entities-by-name (mp/entities-by-name (b/load-model-fixture "model2.xml"))
