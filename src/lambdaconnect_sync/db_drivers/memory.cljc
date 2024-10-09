@@ -787,10 +787,15 @@
   (reduce #(or %1 %2) false (map #(execute-condition % obj attributes entity-name) conditions)))
 
 
+
+(defn spec-assert [spec obj]
+  (s/assert spec obj)
+  true)
+
 (defn get-paginated-collection 
   ([snapshot entity-name page per-page sorts condition]
-   {:pre [(s/valid? ::sorts sorts)
-          (s/valid? ::input-condition condition)]}      
+   {:pre [(spec-assert ::sorts sorts)
+          (spec-assert ::input-condition condition)]}      
    (let [entity (get-in snapshot [:snapshots (:newest-snapshot-idx snapshot) :entities-by-name entity-name])
          _ (assert entity (str "Unknown entity: " entity-name))
          sorts (prewalk #(if (:direction %) 
