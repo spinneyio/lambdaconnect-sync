@@ -201,7 +201,13 @@
                                                  [{:key :FOLocalization/logitude :direction -1}] 
                                                  {:condition-type :and :conditions [{:key :FOLocalization/city :where-fn #(= %  "ul. Żurawia 6/12")}
                                                                                     {:key :FOLocalization/logitude :where-fn #(> %  20.0)}]})
-              results4 (map #(select-keys % [:FOLocalization/city :FOLocalization/logitude]) (resolve-ids ids4))]
+              results4 (map #(select-keys % [:FOLocalization/city :FOLocalization/logitude]) (resolve-ids ids4))
+
+              ids5 (mem/get-paginated-collection after-import "FOLocalization" 0 100 
+                                                 [{:key :FOLocalization/city :direction -1}
+                                                  {:key :FOLocalization/logitude :direction 1}] 
+                                                 {:condition-type :and :conditions [{:key :FOLocalization/logitude :where-fn #(> %  19.7)}]})
+              results5 (map #(select-keys % [:FOLocalization/city :FOLocalization/logitude]) (resolve-ids ids5))]          
           (is (= 16 (count ids1)))
           (is (= "ul. Ulicowa 12" (second results1)))
           (is (= 16 (count ids2)))
@@ -212,6 +218,13 @@
 
           (is (= 2 (count results4)))
           (is (empty? (filter #(< % 20.0) (map :FOLocalization/logitude results4))))
-
-          
-          )))))
+          (is (= results5 '(#:FOLocalization{:city "ul. Żurawia 6/12", :logitude 19.7916142668045}
+                            #:FOLocalization{:city "ul. Żurawia 6/12",
+                                             :logitude 20.033605325340403}
+                            #:FOLocalization{:city "ul. Żurawia 6/12",
+                                             :logitude 20.109153254229014}
+                            #:FOLocalization{:city "ul. Ulicowa 12", :logitude 19.919015835763744}
+                            #:FOLocalization{:city "ul. Ulicowa 12", :logitude 19.996433962795617}
+                            #:FOLocalization{:city "ul. Ulicowa 12", :logitude 20.00282566170049}
+                            #:FOLocalization{:city "ul. Ulicowa 12", :logitude 20.11523327635091}
+                            #:FOLocalization{:city "ul. Ulicowa 12", :logitude 20.13399817567732}))))))))

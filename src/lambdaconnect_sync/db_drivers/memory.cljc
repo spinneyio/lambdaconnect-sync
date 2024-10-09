@@ -798,20 +798,20 @@
          condition  (if-not condition {:key :app/active :where-fn identity}
                             {:condition-type :and 
                              :conditions [condition {:key :app/active :where-fn identity}]})
-         compare (fn [l r sorts] 
-                   (or (empty? sorts)
+         p-compare (fn [l r sorts]
+                   (if (empty? sorts) 0
                        (let [{:keys [key direction]} (first sorts)
                              cmp (if (= direction 1) compare (comp - compare))
                              ll (key l)
                              rr (key r)]
                          (assert (attributes key) (str "Unknown attribute key: " key " for entity " entity-name))
                          (cond 
-                           (= ll rr) (recur ll rr (next sorts))
+                           (= ll rr) (recur l r (next sorts))
                            :default (cmp ll rr)))))]
      (->> (get-collection snapshot entity-name)
           (vals)
           (filter #(execute-condition condition % attributes entity-name))
-          (sort #(compare %1 %2 sorts))
+          (sort #(p-compare %1 %2 sorts))
           (map :db/id)
           (drop offset)
           (take limit))))
