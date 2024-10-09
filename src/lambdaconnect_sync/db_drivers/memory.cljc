@@ -784,7 +784,7 @@
 
 
 (defn get-paginated-collection 
-  ([snapshot entity-name offset limit sorts condition]
+  ([snapshot entity-name page per-page sorts condition]
    {:pre [(s/valid? ::sorts sorts)
           (s/valid? ::input-condition condition)]}      
    (let [entity (get-in snapshot [:snapshots (:newest-snapshot-idx snapshot) :entities-by-name entity-name])
@@ -813,8 +813,8 @@
           (filter #(execute-condition condition % attributes entity-name))
           (sort #(p-compare %1 %2 sorts))
           (map :db/id)
-          (drop offset)
-          (take limit))))
-  ([snapshot entity-name offset limit]
-   (get-paginated-collection snapshot entity-name offset limit [] nil)))
+          (drop (* page per-page))
+          (take per-page))))
+  ([snapshot entity-name page per-page]
+   (get-paginated-collection snapshot entity-name page per-page [] nil)))
 
