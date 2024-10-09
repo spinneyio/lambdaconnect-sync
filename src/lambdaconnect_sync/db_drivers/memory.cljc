@@ -7,6 +7,8 @@
             [lambdaconnect-model.tools :as t]
             [lambdaconnect-model.utils :as u]
             [clojure.pprint :refer [pprint]]
+            [clojure.walk :refer [prewalk postwalk]]
+            [clojure.string :refer [lower-case]]
             [clojure.set :refer [intersection union difference]]
             #?(:clj [clojure.spec.alpha :as s] 
                :cljs [cljs.spec.alpha :as s])))
@@ -741,5 +743,107 @@
 (defn truncate-db [database]
   (update database :snapshots #(select-keys % [(:newest-snapshot-idx database)])))
 
+
+;; get access
   
+(s/def ::key qualified-keyword?)
+(s/def ::direction #{-1 1})
+(s/def ::where-fn fn?)
+(s/def ::option #{:case-insensitive :nulls-first :nulls-last})
+(s/def ::options (s/coll-of ::option))
+
+(s/def ::sort (s/keys :req-un [::key ::direction] :opt-un [::options]))
+(s/def ::sorts (s/coll-of ::sort))
+
+(s/def ::simple-condition (s/keys :req-un [::key ::where-fn]))
+(s/def ::condition-type #{:and :or})
+(s/def ::condition (s/or :simple ::simple-condition :composite ::composite-condition))
+(s/def ::conditions (s/coll-of ::condition))
+(s/def ::composite-condition (s/keys :req-un [::condition-type ::conditions]))
+
+(s/def ::input-condition (s/nilable ::condition))
+
+
+(defn get-collection [snapshot entity-name]
+  (let [coll (get-in snapshot [:snapshots (:newest-snapshot-idx snapshot) :collections entity-name :collection-content])]
+    (assert coll (str "No collection with name '" entity-name "' present in database."))
+    coll))
+
+(defn get-stable-coll-ids [snapshot entity-name]
+  (-> (get-collection snapshot entity-name)
+      (keys)
+      (sort)))
+
+(defmulti execute-condition (fn [condition _ _ _]  (or (:condition-type condition) :simple)))
+
+(defmethod execute-condition :simple [{:keys [key where-fn]} obj attributes entity-name]
+  (assert (attributes key) (str "Unknown attribute key: " key " for entity " entity-name))
+  (-> obj key where-fn))
+
+(defmethod execute-condition :and [{:keys [conditions]} obj attributes entity-name]
+  (reduce #(and %1 %2) true (map #(execute-condition % obj attributes entity-name) conditions)))
+
+(defmethod execute-condition :or [{:keys [conditions]} obj attributes entity-name]
+  (reduce #(or %1 %2) false (map #(execute-condition % obj attributes entity-name) conditions)))
+
+
+
+(defn spec-assert [spec obj]
+  (s/assert spec obj)
+  true)
+
+(defn get-paginated-collection 
+  ([snapshot entity-name page per-page sorts condition]
+   {:pre [(spec-assert ::sorts sorts)
+          (spec-assert ::input-condition condition)]}      
+   (let [entity (get-in snapshot [:snapshots (:newest-snapshot-idx snapshot) :entities-by-name entity-name])
+         _ (assert entity (str "Unknown entity: " entity-name))
+         sorts (prewalk #(if (:direction %) 
+                           (if (:options %) (update % :options set) (assoc % :options #{}))
+                           %) sorts)
+         attribute-keys (->> entity
+                         :attributes
+                         (vals)
+                         (map t/datomic-name)
+                         (set))
+         attributes-by-name (-> entity :attributes)
+         sorts (if (seq sorts) sorts [{:key :app/createdAt :direction 1}])
+         condition  (if-not condition {:key :app/active :where-fn identity}
+                            {:condition-type :and 
+                             :conditions [condition {:key :app/active :where-fn identity}]})
+
+         comparators (map (fn [{:keys [key direction options]}]
+                            (let [string-attr? (= :db.type/string 
+                                                  (-> key name attributes-by-name :type))
+                                  trafo (if (options :case-insensitive) 
+                                          #(some-> % key lower-case)
+                                          key)
+                                  null-ret (if (options :nulls-first) -1 1)
+                                  cmp-with-null (if (not (or (options :nulls-first) (options :nulls-last)))
+                                                  compare
+                                                  #(cond (and (nil? %1) %2) null-ret
+                                                         (and %1 (nil? %2)) (- null-ret)
+                                                         :default (compare %1 %2)))
+                                  cmp (if (= direction 1) cmp-with-null (comp - cmp-with-null))]
+                              (assert (attribute-keys key) (str "Unknown attribute key: " key " for entity " entity-name))
+                              (assert (not (and (options :nulls-first) (options :nulls-last))))
+                              (when (:case-insensitive options)
+                                (assert string-attr? "Only string attributes can be compared in a case insensitive way"))
+                              #(cmp (trafo %1) (trafo %2)))) sorts)
+
+         p-compare (fn [l r comparators]
+                     (if (empty? comparators) 0
+                         (let [[custom-comparator & comparators] comparators
+                             compare-value (custom-comparator l r)]
+                           (if (zero? compare-value) (recur l r comparators)
+                               compare-value))))]
+     (->> (get-collection snapshot entity-name)
+          (vals)
+          (filter #(execute-condition condition % attribute-keys entity-name))
+          (sort #(p-compare %1 %2 comparators))
+          (map :db/id)
+          (drop (* page per-page))
+          (take per-page))))
+  ([snapshot entity-name page per-page]
+   (get-paginated-collection snapshot entity-name page per-page [] nil)))
 
