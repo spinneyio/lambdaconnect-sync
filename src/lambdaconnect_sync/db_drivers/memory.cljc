@@ -744,7 +744,7 @@
 
 ;; get access
   
-(s/def ::key #(and (keyword %) (namespace %)))
+(s/def ::key qualified-keyword?)
 (s/def ::direction #{-1 1})
 
 (s/def ::where-fn fn?)
@@ -807,7 +807,6 @@
                          (assert (attributes key) (str "Unknown attribute key: " key " for entity " entity-name))
                          (cond 
                            (= ll rr) (recur ll rr (next sorts))
-                           (nil? ll) false 
                            :default (cmp ll rr)))))]
      (->> (get-collection snapshot entity-name)
           (vals)
