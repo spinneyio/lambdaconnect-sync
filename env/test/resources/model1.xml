@@ -55,7 +55,7 @@
         <attribute name="updatedAt" attributeType="Date" usesScalarValueType="NO" syncable="YES"/>
         <attribute name="uuid" attributeType="String" maxValueString="36" syncable="YES"/>
         <attribute name="zipCode" optional="YES" attributeType="String" maxValueString="100" syncable="YES"/>
-        <relationship name="game" optional="YES" deletionRule="Nullify" destinationEntity="FIGame" inverseName="location" inverseEntity="FIGame" syncable="YES"/>
+        <relationship name="game" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="FIGame" inverseName="location" inverseEntity="FIGame" syncable="YES"/>
         <relationship name="users" optional="YES" toMany="YES" deletionRule="Nullify" destinationEntity="FIUser" inverseName="address" inverseEntity="FIUser" syncable="YES"/>
     </entity>
     <entity name="FIMessage" representedClassName=".FIMessage" syncable="YES">
