@@ -807,7 +807,8 @@
                          (map t/datomic-name)
                          (set))
          attributes-by-name (-> entity :attributes)
-         sorts (if (seq sorts) sorts [{:key :app/createdAt :direction 1 :options #{}}])
+         sorts (if (seq sorts) sorts [{:key :app/createdAt :direction 1 :options #{}}
+                                      {:key :app/uuid :direction 1 :options #{}}])
          condition  (if-not condition {:key :app/active :where-fn identity}
                             {:condition-type :and 
                              :conditions [condition {:key :app/active :where-fn identity}]})
