@@ -113,7 +113,7 @@
                                                  (when-not slave-mode? {:syncRevision sync-revision})
                                                  (into {} (map (fn [a] [(mp/datomic-name a) (:default-value a)]) (filter :default-value (vals (:attributes entity))))))]
                         [entity-name (doall (mapping-fun #(-> %
-                                                              (mp/replace-inverses entity)
+                                                              (mp/replace-inverses entity true)
                                                               ((partial merge proto-object))
                                                               (scoped-object entities-by-name entity scoping-edn scoped-tags scoped-ids tags-by-ids (:constants scoping-edn-with-constants))
                                                               (mp/clojure-to-json entity)

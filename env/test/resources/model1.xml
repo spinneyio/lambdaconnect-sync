@@ -15,7 +15,7 @@
         <attribute name="updatedAt" attributeType="Date" usesScalarValueType="NO" syncable="YES"/>
         <attribute name="uuid" attributeType="String" maxValueString="36" syncable="YES"/>
         <relationship name="availableUsers" optional="YES" toMany="YES" deletionRule="Nullify" destinationEntity="FIGameAvailabilityIndication" inverseName="game" inverseEntity="FIGameAvailabilityIndication" syncable="YES"/>
-        <relationship name="location" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="FILocation" inverseName="games" inverseEntity="FILocation" syncable="YES"/>
+        <relationship name="location" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="FILocation" inverseName="game" inverseEntity="FILocation" syncable="YES"/>
         <relationship name="organiser"  optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="FIUser" inverseName="organisedGames" inverseEntity="FIUser" syncable="YES"/>
         <relationship name="participants" optional="YES" toMany="YES" deletionRule="Nullify" destinationEntity="FIGameParticipance" inverseName="game" inverseEntity="FIGameParticipance" syncable="YES"/>
         <relationship name="sport"  optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="FISport" inverseName="games" inverseEntity="FISport" syncable="YES"/>
@@ -55,7 +55,7 @@
         <attribute name="updatedAt" attributeType="Date" usesScalarValueType="NO" syncable="YES"/>
         <attribute name="uuid" attributeType="String" maxValueString="36" syncable="YES"/>
         <attribute name="zipCode" optional="YES" attributeType="String" maxValueString="100" syncable="YES"/>
-        <relationship name="games" optional="YES" toMany="YES" deletionRule="Nullify" destinationEntity="FIGame" inverseName="location" inverseEntity="FIGame" syncable="YES"/>
+        <relationship name="game" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="FIGame" inverseName="location" inverseEntity="FIGame" syncable="YES"/>
         <relationship name="users" optional="YES" toMany="YES" deletionRule="Nullify" destinationEntity="FIUser" inverseName="address" inverseEntity="FIUser" syncable="YES"/>
     </entity>
     <entity name="FIMessage" representedClassName=".FIMessage" syncable="YES">
