@@ -807,8 +807,12 @@
                          (map t/datomic-name)
                          (set))
          attributes-by-name (-> entity :attributes)
-         sorts (if (seq sorts) sorts [{:key :app/createdAt :direction 1 :options #{}}
-                                      {:key :app/uuid :direction 1 :options #{}}])
+         sorts (if (seq sorts) 
+                 (if (empty? (filter #(= :app/uuid (:key %)) sorts))
+                             (concat sorts [{:key :app/uuid :direction 1 :options #{}}])
+                             sorts)
+                   [{:key :app/createdAt :direction 1 :options #{}}
+                    {:key :app/uuid :direction 1 :options #{}}])
          condition  (if-not condition {:key :app/active :where-fn identity}
                             {:condition-type :and 
                              :conditions [condition {:key :app/active :where-fn identity}]})
@@ -819,6 +823,7 @@
                                   trafo (if (options :case-insensitive) 
                                           #(some-> % key lower-case)
                                           key)
+                                  trafo (comp #(if (uuid? %) (str %) %) trafo)
                                   null-ret (if (options :nulls-first) -1 1)
                                   cmp-with-null (if (not (or (options :nulls-first) (options :nulls-last)))
                                                   compare

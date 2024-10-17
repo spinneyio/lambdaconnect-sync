@@ -195,9 +195,7 @@
             (let [ids (mem/get-paginated-collection after-import "FOLocalization" 0 100 nil nil)
                   results (map #(select-keys % [:FOLocalization/city :app/uuid :app/createdAt]) (resolve-ids ids))]
               (is (= 18 (count ids)))
-              ;; It turns out, that uuids in clj (represented as java uuids) and uuids in cljs (represented as strings) have a different
-              ;; order relation. Therefore, since createdAt -> uuid is the default sorting scheme, it will yield different results.
-              (is (= #?(:cljs "ul. Ulicowa 12" :clj "ul. Żurawia 6/12") (:FOLocalization/city (second results))))))
+              (is (= "ul. Ulicowa 12") (:FOLocalization/city (second results)))))
 
           (testing "Sort by name descending" 
             (let [ids (mem/get-paginated-collection after-import "FOLocalization" 0 100 [{:key :FOLocalization/city :direction -1}] nil)
