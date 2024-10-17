@@ -191,6 +191,12 @@
               (is (= 18 (count ids)))
               (is (= "kolibrowa" (second results)))))
 
+          (testing "No sorts at all" 
+            (let [ids (mem/get-paginated-collection after-import "FOLocalization" 0 100 nil nil)
+                  results (map #(select-keys % [:FOLocalization/city :app/uuid :app/createdAt]) (resolve-ids ids))]
+              (is (= 18 (count ids)))
+              (is (= "ul. Ulicowa 12") (:FOLocalization/city (second results)))))
+
           (testing "Sort by name descending" 
             (let [ids (mem/get-paginated-collection after-import "FOLocalization" 0 100 [{:key :FOLocalization/city :direction -1}] nil)
                   results (map :FOLocalization/city (resolve-ids ids))]              
@@ -306,4 +312,5 @@
                                                      {:key :FOLocalization/city :direction 1 :options [:case-insensitive]}] nil)   
                   results (map #(select-keys % [:FOLocalization/city :FOLocalization/leftHash]) (resolve-ids ids))]
               (is (:FOLocalization/leftHash (first results)))
-              (is (not (:FOLocalization/leftHash (last results)))))))))))
+              (is (not (:FOLocalization/leftHash (last results))))))
+)))))
