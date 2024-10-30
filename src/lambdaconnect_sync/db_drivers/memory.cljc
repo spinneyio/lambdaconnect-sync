@@ -414,7 +414,7 @@
                         :collection-content
                         entity-id]
                        #(do
-                          (assert (= retracted-value (attribute-key %)))
+                          (assert (= retracted-value (:db/id (attribute-key %))) (str "Retraction failure: '" retracted-value "' is not equal to '" (:db/id (attribute-key %)) "' extracted by key: '" attribute-key "'."))
                           (dissoc % attribute-key)))
             
             (update-in [:collections
