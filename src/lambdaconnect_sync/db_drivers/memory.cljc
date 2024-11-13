@@ -141,9 +141,9 @@
    datomic-relationships 
    entities-by-id
    allocated-ids]
-
   (let [entity-name (entities-by-id entity-id)]
     (assert entity-name)
+    (assert (not (datomic-relationships attribute-key)) "CAS not supported for relationships in in-memory storage")
     (assert (= old-value (get-in snapshot [:collections 
                                            entity-name 
                                            :collection-content 
@@ -162,7 +162,6 @@
    datomic-relationships 
    entities-by-id
    allocated-ids]
-  
   (let [entity-name (entities-by-id entity-id)]
     (assert entity-name "Each new added entity has to have at least one attribute that differentiates it from other entities set (bare minimum is :EntityName/ident__")
     (if-not (datomic-relationships attribute-key)
@@ -198,7 +197,6 @@
                          :app/uuid uuid}))
 
             new-value (lookup-relationship snapshot allocated-ids relationship new-value)]
-
         (cond 
 
           ;; many to many 
@@ -260,12 +258,12 @@
           (and (not (:to-many relationship))
                (not (:to-many inverse-relationship)))         
           
-          (let [old-value (get-in snapshot 
+          (let [old-value (:db/id (get-in snapshot 
                                   [:collections
                                    entity-name
                                    :collection-content
                                    entity-id
-                                   attribute-key])
+                                   attribute-key]))
                 old-target-value (-> snapshot 
                                      (get-in [:collections
                                               (:destination-entity relationship)
@@ -318,7 +316,6 @@
    datomic-relationships 
    entities-by-id
    allocated-ids]
-
   (let [entity-name (entities-by-id entity-id)]
     (assert entity-name)
     (if-not (datomic-relationships attribute-key)
@@ -438,7 +435,13 @@
               (println "**************************** Error in object: ")
               (pprint %)
               (println "Explanation:")
-              (s/explain ::memory-database %)))]}  
+              (s/explain ::memory-database %)))
+          (let [newest-snapshot-colls (get-in % [:snapshots (:newest-snapshot-idx database) :collections])]
+            (doseq [[entity-name entities] newest-snapshot-colls]
+              (doseq [entity (vals (:collection-content entities))]
+                (when-not (s/valid? (keyword "lambdaconnect-model.spec.datomic" entity-name) entity)
+                  (assert false (s/explain (keyword "lambdaconnect-model.spec.datomic" entity-name) entity)))))
+            true)]}  
   (let [snapshot (get-in database [:snapshots (:newest-snapshot-idx database)])
         new-snapshot-idx (inc (:newest-snapshot-idx database))
         
@@ -513,7 +516,6 @@
                                               :db/id]
                                              allocated-id)))
                              snapshot allocated-ids)
-
         ;; Apply transaction entries one by one:
         new-snapshot (reduce 
                       (fn [snapshot transaction]
@@ -563,27 +565,27 @@
       entities))
 
   (objects-by-uuids [this database entity uuids fetch-inverses?]
-    (let [index (get-in database [:snapshots
+    (let [index (or (get-in database [:snapshots
                                   (:newest-snapshot-idx database)
                                   :collections
                                   (:name entity)
-                                  :collection-uuid-index])]
+                                  :collection-uuid-index]) {})]
       (i/objects-by-ids this database entity (keep index uuids) fetch-inverses?)))
 
   (check-uuids-for-entity [_ database entity-name uuids]
-    (let [index (get-in database [:snapshots
-                                    (:newest-snapshot-idx database)
-                                    :collections
-                                    entity-name
-                                    :collection-uuid-index])]
+    (let [index (or (get-in database [:snapshots
+                                  (:newest-snapshot-idx database)
+                                  :collections
+                                  entity-name
+                                  :collection-uuid-index]) {})]
       (set (filter index uuids))))  
 
   (id-for-uuid [_ database entity uuid]
-    (let [index (get-in database [:snapshots
+    (let [index (or (get-in database [:snapshots
                                   (:newest-snapshot-idx database)
                                   :collections
                                   (:name entity)
-                                  :collection-uuid-index])]
+                                  :collection-uuid-index]) {})]
       (index uuid)))
 
   (sync-revision [_ database]
