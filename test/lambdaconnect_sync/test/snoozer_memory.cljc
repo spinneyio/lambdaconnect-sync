@@ -19,7 +19,7 @@
 (use-fixtures :once (partial b/setup-basic-test-environment (b/load-model-fixture "model5.xml") 
                              nil))
 
-(deftest ^:test-refresh/focus test-to-one-relationship
+(deftest test-to-one-relationship
   (testing "Setup;"
     (let [empty-db @b/conn
           entities-by-name (mp/entities-by-name  (b/load-model-fixture "model5.xml"))
