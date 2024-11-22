@@ -297,6 +297,14 @@
                   results (map #(select-keys % [:FOLocalization/city :FOLocalization/leftHash]) (resolve-ids ids))]
               (is (not (:FOLocalization/leftHash (first results))))
               (is (:FOLocalization/leftHash (last results)))))
+          
+          (testing "Allow nil in page/perPage"
+            (let [ids (mem/get-paginated-collection after-import "FOLocalization" nil nil
+                                                    [{:key :FOLocalization/leftHash :direction 1 :options [:case-insensitive]}
+                                                     {:key :FOLocalization/city :direction 1 :options [:case-insensitive]}] nil)
+                  results (map #(select-keys % [:FOLocalization/city :FOLocalization/leftHash]) (resolve-ids ids))]
+              (is (not (:FOLocalization/leftHash (first results))))
+              (is (:FOLocalization/leftHash (last results)))))
 
           (testing "Sort by left hash, nulls to the top"
             (let [ids (mem/get-paginated-collection after-import "FOLocalization" 0 100 

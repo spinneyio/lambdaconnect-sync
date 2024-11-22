@@ -844,14 +844,19 @@
                          (let [[custom-comparator & comparators] comparators
                              compare-value (custom-comparator l r)]
                            (if (zero? compare-value) (recur l r comparators)
-                               compare-value))))]
+                               compare-value))))
+         
+         take-page (if (and page per-page)
+                     (fn [coll] (->> coll
+                                     (drop (* page per-page))
+                                     (take per-page)))
+                     identity)]
      (->> (get-collection snapshot entity-name)
           (vals)
           (filter #(execute-condition condition % attribute-keys entity-name))
           (sort #(p-compare %1 %2 comparators))
           (map :db/id)
-          (drop (* page per-page))
-          (take per-page))))
+          take-page)))
   ([snapshot entity-name page per-page]
    (get-paginated-collection snapshot entity-name page per-page [] nil)))
 
