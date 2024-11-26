@@ -37,7 +37,7 @@
                 :driver (lsm/->MemoryDatabaseDriver nil)}
         db (create-db)
         now #?(:cljs (js/Date.) :clj (java.util.Date.))
-        ebn (get-in db [:snapshots (:newest-snapshot-idx db) :entities-by-name])
+        ebn (get-in db [:entities-by-name])
         _ (mp/specs ebn {:FIUser/email (fn [] (gen/fmap #(str % "@test.com") (gen/string-alphanumeric)))
                          :FIUser/gender #(s/gen #{"U" "M" "F"})
                          :FIGame/gender #(s/gen #{"U" "M" "F"})
