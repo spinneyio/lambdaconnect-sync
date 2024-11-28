@@ -3,7 +3,8 @@
                        :output-dir "__tests__"
                        :modules {:cljs-tests {:exports {testCljs tests/test-all}}}
                        :js-options {:js-provider :import}
-                       :compiler-options {:warnings {:redef false
+                       :compiler-options {:elide-asserts false
+                                          :warnings {:redef false
                                                      :fn-deprecated false}
                     			  :optimizations :advanced
                     			  :warnings-as-errors true} 
