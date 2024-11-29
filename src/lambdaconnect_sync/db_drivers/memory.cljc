@@ -44,7 +44,7 @@
 
 (s/def ::snapshot 
   (s/keys :req-un 
-          [::collections                      
+          [::collections
            ::ids-to-entity-names])) 
 
 (s/def ::newest-snapshot-idx ::snapshot-id)
@@ -525,7 +525,7 @@
         new-snapshot (assoc new-snapshot :ids-to-entity-names entities-by-id)
         new-db (-> database
                    (assoc :inc-max-entity-id ending-id)
-                   (update :newest-snapshot-idx inc)
+                   (assoc :newest-snapshot-idx new-snapshot-idx)
                    (assoc-in [:snapshots new-snapshot-idx] new-snapshot))]
 ;; TODO: detecting inconsistencies in transactions (multiple :db/add for same entity and attribute with different values, ...)
     (s/assert ::memory-database new-db)
