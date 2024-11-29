@@ -45,8 +45,6 @@
 (s/def ::snapshot 
   (s/keys :req-un 
           [::collections
-           ::entities-by-name
-           ::keywords-without-inverses-by-name
            ::ids-to-entity-names])) 
 
 (s/def ::newest-snapshot-idx ::snapshot-id)
@@ -56,6 +54,8 @@
 (s/def ::memory-database
   (s/keys :req-un 
           [::newest-snapshot-idx
+           ::entities-by-name
+           ::keywords-without-inverses-by-name
            ::snapshots
            ::inc-max-entity-id
            ::db-name]))
@@ -132,12 +132,13 @@
           (assert result (str "Could not look up " id-or-lookup " in the database."))
           result)))))
 
-;; We do not want to separately handle db.fn/cas and db/cas, so we abuse the fact that all transaction entries have a :db type
-(defmulti process-transaction-entry (fn [[op] _ _ _ _] (keyword "db" (name op))))
+;; We do not want to separately handle db.fn/cas and db/cas, so we abuse the fact that all transaction entries (except for :db.fn/cas) have a :db type
+(defmulti process-transaction-entry (fn [[op] _ _ _ _ _] (keyword "db" (name op))))
 
 (defmethod process-transaction-entry :db/cas 
   [[_ entity-id attribute-key old-value new-value] 
    snapshot 
+   database
    datomic-relationships 
    entities-by-id
    allocated-ids]
@@ -158,7 +159,8 @@
 
 (defmethod process-transaction-entry :db/add 
   [[_ entity-id attribute-key new-value] 
-   snapshot 
+   snapshot
+   database
    datomic-relationships 
    entities-by-id
    allocated-ids]
@@ -172,11 +174,11 @@
                           entity-id 
                           attribute-key] new-value)
       ;; Relationship
-      (let [relationship (get-in snapshot [:entities-by-name
+      (let [relationship (get-in database [:entities-by-name
                                            entity-name
                                            :datomic-relationships
                                            (name attribute-key)])
-            inverse-relationship (get-in snapshot [:entities-by-name
+            inverse-relationship (get-in database [:entities-by-name
                                                    (:inverse-entity relationship)
                                                    :relationships
                                                    (:inverse-name relationship)])
@@ -313,6 +315,7 @@
 (defmethod process-transaction-entry :db/retract
   [[_ entity-id attribute-key retracted-value] 
    snapshot 
+   database
    datomic-relationships 
    entities-by-id
    allocated-ids]
@@ -327,11 +330,11 @@
                  #(do (assert (= retracted-value (attribute-key %)))
                       (dissoc % attribute-key)))
       ;; Relationship
-      (let [relationship (get-in snapshot [:entities-by-name
+      (let [relationship (get-in database [:entities-by-name
                                            entity-name
                                            :datomic-relationships
                                            (name attribute-key)])
-            inverse-relationship (get-in snapshot [:entities-by-name
+            inverse-relationship (get-in database [:entities-by-name
                                                    (:inverse-entity relationship)
                                                    :relationships
                                                    (:inverse-name relationship)])
@@ -424,29 +427,15 @@
 
 (defn- apply-transaction 
   [database transaction]
-  {:pre [(s/valid? ::memory-database database) (if (s/valid? ::transaction transaction)
-                                                 true
-                                                 (do 
-                                                   (pprint transaction)
-                                                   (s/explain ::transaction transaction)))]
-   :post [(if (s/valid? ::memory-database %)
-            true
-            (do 
-              (println "**************************** Error in object: ")
-              (pprint %)
-              (println "Explanation:")
-              (s/explain ::memory-database %)))
-          (let [newest-snapshot-colls (get-in % [:snapshots (:newest-snapshot-idx database) :collections])]
-            (doseq [[entity-name entities] newest-snapshot-colls]
-              (doseq [entity (vals (:collection-content entities))]
-                (when-not (s/valid? (keyword "lambdaconnect-model.spec.datomic" entity-name) entity)
-                  (assert false (s/explain (keyword "lambdaconnect-model.spec.datomic" entity-name) entity)))))
-            true)]}  
+  
+  (s/assert ::memory-database database)
+  (s/assert ::transaction transaction)
+  
   (let [snapshot (get-in database [:snapshots (:newest-snapshot-idx database)])
         new-snapshot-idx (inc (:newest-snapshot-idx database))
         
         ;; This could be cached for performance if required:
-        datomic-relationships (get-datomic-relationships-from-model (:entities-by-name snapshot))
+        datomic-relationships (get-datomic-relationships-from-model (:entities-by-name database))
 
         ;; Some maps might not include :db/id, we then assign random ones.
         transaction (map #(if (and (map? %) (not (:db/id %))) 
@@ -519,7 +508,7 @@
         ;; Apply transaction entries one by one:
         new-snapshot (reduce 
                       (fn [snapshot transaction]
-                        (process-transaction-entry transaction snapshot datomic-relationships entities-by-id allocated-ids))
+                        (process-transaction-entry transaction snapshot database datomic-relationships entities-by-id allocated-ids))
                       new-snapshot transaction)
 
         ;; Update the :collection-uuid-index for each collection that has entities added
@@ -533,12 +522,15 @@
                              new-snapshot (group-by entities-by-id allocated-ids))
 
 
-        new-snapshot (assoc new-snapshot :ids-to-entity-names entities-by-id)]
+        new-snapshot (assoc new-snapshot :ids-to-entity-names entities-by-id)
+        new-db (-> database
+                   (assoc :inc-max-entity-id ending-id)
+                   (assoc :newest-snapshot-idx new-snapshot-idx)
+                   (assoc-in [:snapshots new-snapshot-idx] new-snapshot))]
 ;; TODO: detecting inconsistencies in transactions (multiple :db/add for same entity and attribute with different values, ...)
-    (-> database
-        (assoc :inc-max-entity-id ending-id)
-        (update :newest-snapshot-idx inc)
-        (assoc-in [:snapshots new-snapshot-idx] new-snapshot))))
+    (s/assert ::memory-database new-db)
+    new-db
+ ))
 
 (defrecord MemoryDatabaseDriver [config]
   i/IDatabaseDriver
@@ -556,7 +548,7 @@
                            (:name entity)
                            :collection-content])
           all-keys (when (not fetch-inverses?)
-                     (get-in current-snapshot
+                     (get-in database
                              [:keywords-without-inverses-by-name
                               (:name entity)]))
           entities (if fetch-inverses? 
@@ -607,9 +599,7 @@
 
   (misclassified-objects [this database entity uuids]
     (let [entities (-> database 
-                       (get-in [:snapshots
-                                (:newest-snapshot-idx database)
-                                :entities-by-name])
+                       (get-in [:entities-by-name])
                        (dissoc (:name entity))
                        (vals))]
       (mapcat #(i/objects-by-uuids this database % uuids false) entities)))
@@ -729,18 +719,19 @@
   {:db-name name
    :newest-snapshot-idx 1
    :inc-max-entity-id 1
+   :entities-by-name entities-by-name
+   :keywords-without-inverses-by-name 
+   (update-vals entities-by-name
+                (fn [entity]
+                  (concat
+                   [(t/unique-datomic-identifier entity)]
+                   (map t/datomic-name 
+                        (concat (vals (:attributes entity))
+                                (vals (:datomic-relationships entity)))))))
    :snapshots {1 {:collections (into {} (map #(vector % {:collection-content {}
-                                                         :collection-uuid-index {}}) (keys entities-by-name)))
-                  :entities-by-name entities-by-name
+                                                         :collection-uuid-index {}}) (keys entities-by-name)))                  
                   :ids-to-entity-names {}
-                  :keywords-without-inverses-by-name 
-                  (update-vals entities-by-name
-                               (fn [entity]
-                                 (concat
-                                  [(t/unique-datomic-identifier entity)]
-                                  (map t/datomic-name 
-                                       (concat (vals (:attributes entity))
-                                               (vals (:datomic-relationships entity)))))))}}})
+}}})
 
 (defn truncate-db [database]
   (update database :snapshots #(select-keys % [(:newest-snapshot-idx database)])))
@@ -755,7 +746,7 @@
 (s/def ::options (s/coll-of ::option))
 
 (s/def ::sort (s/keys :req-un [::key ::direction] :opt-un [::options]))
-(s/def ::sorts (s/coll-of ::sort))
+(s/def ::sorts (s/nilable (s/coll-of ::sort)))
 
 (s/def ::simple-condition (s/keys :req-un [::key ::where-fn]))
 (s/def ::condition-type #{:and :or})
@@ -766,8 +757,8 @@
 (s/def ::input-condition (s/nilable ::condition))
 
 
-(defn get-collection [snapshot entity-name]
-  (let [coll (get-in snapshot [:snapshots (:newest-snapshot-idx snapshot) :collections entity-name :collection-content])]
+(defn get-collection [database entity-name]
+  (let [coll (get-in database [:snapshots (:newest-snapshot-idx database) :collections entity-name :collection-content])]
     (assert coll (str "No collection with name '" entity-name "' present in database."))
     coll))
 
@@ -788,17 +779,15 @@
 (defmethod execute-condition :or [{:keys [conditions]} obj attributes entity-name]
   (reduce #(or %1 %2) false (map #(execute-condition % obj attributes entity-name) conditions)))
 
-
-
-(defn spec-assert [spec obj]
-  (s/assert spec obj)
-  true)
-
 (defn get-paginated-collection 
-  ([snapshot entity-name page per-page sorts condition]
-   {:pre [(spec-assert ::sorts sorts)
-          (spec-assert ::input-condition condition)]}      
-   (let [entity (get-in snapshot [:snapshots (:newest-snapshot-idx snapshot) :entities-by-name entity-name])
+  ([database entity-name page per-page sorts condition]
+   (s/assert ::sorts sorts)
+   (s/assert ::input-condition condition)
+   (s/assert ::memory-database database)
+   (s/assert int? page)
+   (s/assert int? per-page)
+   (s/assert string? entity-name)
+   (let [entity (get-in database [:entities-by-name entity-name])
          _ (assert entity (str "Unknown entity: " entity-name))
          sorts (prewalk #(if (:direction %) 
                            (if (:options %) (update % :options set) (assoc % :options #{}))
@@ -845,13 +834,13 @@
                              compare-value (custom-comparator l r)]
                            (if (zero? compare-value) (recur l r comparators)
                                compare-value))))]
-     (->> (get-collection snapshot entity-name)
+     (->> (get-collection database entity-name)
           (vals)
           (filter #(execute-condition condition % attribute-keys entity-name))
           (sort #(p-compare %1 %2 comparators))
           (map :db/id)
           (drop (* page per-page))
           (take per-page))))
-  ([snapshot entity-name page per-page]
-   (get-paginated-collection snapshot entity-name page per-page [] nil)))
+  ([database entity-name page per-page]
+   (get-paginated-collection database entity-name page per-page [] nil)))
 
