@@ -144,18 +144,26 @@
    allocated-ids]
   (let [entity-name (entities-by-id entity-id)]
     (assert entity-name)
-    (assert (not (datomic-relationships attribute-key)) "CAS not supported for relationships in in-memory storage")
-    (assert (= old-value (get-in snapshot [:collections 
-                                           entity-name 
-                                           :collection-content 
-                                           entity-id 
-                                           attribute-key])))
-    (assoc-in snapshot [:collections 
-                        entity-name 
-                        :collection-content 
-                        entity-id 
-                        attribute-key]
-              new-value)))
+    (if (datomic-relationships attribute-key) 
+      (assert (= old-value (get-in snapshot [:collections 
+                                             entity-name 
+                                             :collection-content 
+                                             entity-id 
+                                             attribute-key
+                                             :db/id])))
+      
+      (assert (= old-value (get-in snapshot [:collections 
+                                             entity-name 
+                                             :collection-content 
+                                             entity-id 
+                                             attribute-key]))))
+
+    (process-transaction-entry [:db/add entity-id attribute-key new-value]
+                               snapshot
+                               database
+                               datomic-relationships
+                               entities-by-id
+                               allocated-ids)))
 
 (defmethod process-transaction-entry :db/add 
   [[_ entity-id attribute-key new-value] 
