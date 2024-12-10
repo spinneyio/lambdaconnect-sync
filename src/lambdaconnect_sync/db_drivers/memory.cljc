@@ -407,7 +407,9 @@
                                :collection-content
                                entity-id]
                               #(do 
-                                 (assert (= (attribute-key %) (id->rel retracted-value)))
+                                 (assert (= (attribute-key %) (id->rel retracted-value)) 
+                                         (str "O2M Retraction failure: '" (id->rel retracted-value) "' is not equal to '" (attribute-key %) "' extracted by key: '" attribute-key "'.\n"
+                                              "Object in question: " %))
                                  (dissoc % attribute-key)))))
 
           ;; one to one
@@ -422,7 +424,7 @@
                         :collection-content
                         entity-id]
                        #(do
-                          (assert (= retracted-value (:db/id (attribute-key %))) (str "Retraction failure: '" retracted-value "' is not equal to '" (:db/id (attribute-key %)) "' extracted by key: '" attribute-key "'."))
+                          (assert (= retracted-value (:db/id (attribute-key %))) (str "O2O Retraction failure: '" retracted-value "' is not equal to '" (:db/id (attribute-key %)) "' extracted by key: '" attribute-key "'.\n" "Object in question: " %))
                           (dissoc % attribute-key)))
             
             (update-in [:collections
