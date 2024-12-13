@@ -59,7 +59,7 @@
                                                              (range 5)))))
         push-gen-time (/ push-gen-time 5)
         _ (println "Took" (* 1000 push-gen-time) "ms to generate push.")
-        [new-db speculation-time] (bench (profile {} (p :whole-speculate (db/speculate config db tx))))
+        [new-db speculation-time] (bench (profile {} (db/speculate config db tx)))
         _ (println "Took" (* 1000 speculation-time) "ms to integrate push.")
         [pull-output pull-time] (bench (sync/pull {:config config
                                                    :incoming-json  (into {} (map (fn [n] [n 0]) (keys ebn)))
@@ -100,7 +100,7 @@
                                                                         :slave-mode? slave-mode?
                                                                         :sync-revision-for-slave-mode 1})))
         _ (println "Took" (* 1000 push-gen-time) "ms to generate small tx: " tx)
-        [newest-db speculation-time] (bench (profile {} (p :whole-speculate (db/speculate config new-db tx))))
+        [newest-db speculation-time] (bench (profile {} (db/speculate config new-db tx)))
         _ (println "Took" (* 1000 speculation-time) "ms to integrate push.")
         test-graph-2 (into {} (map (fn [[k v]] [k []]) test-graph)) 
         [_ push-gen-time-2] (bench (first (profile {} (mapv (fn [_] (sync/push-transaction {:config config 
@@ -118,10 +118,32 @@
 
 (deftest benchmarks
   (testing "2000 5000"
-    (test-sync-performance 5000 10000 false)
-    (test-sync-performance 5000 10000 true)
+    (test-sync-performance 2000 5000 false)
+    (test-sync-performance 2000 5000 true)
     ))
 
+
+(deftest basics-benchmark
+  (testing "sorting 10000 maps" 
+    (let [[to-sort t1] (bench (vec (take 10000 (repeatedly #(-> {:a (rand)})))))
+          _ (println "Took" (* 1000 t1) "ms to prepare 10000 random objects.")
+          [sorted t2] (bench (sort-by :a to-sort))
+          _ (println "Took" (* 1000 t2) "ms to sort prepared vector.")
+          [counted t3] (bench (count sorted))
+          _ (println "Took" (* 1000 t3) "ms to print count: " counted)
+          [ff t4] (bench (first sorted))
+          _ (println "Took" (* 1000 t4) "ms to take first element: " ff)
+          ]))
+    (testing "sorting 10000 maps again" 
+    (let [[to-sort t1] (bench (vec (take 10000 (repeatedly #(-> {:a (rand)})))))
+          _ (println "Took" (* 1000 t1) "ms to prepare 10000 random objects.")
+          [sorted t2] (bench (sort-by :a to-sort))
+          _ (println "Took" (* 1000 t2) "ms to sort prepared vector.")
+          [counted t3] (bench (count sorted))
+          _ (println "Took" (* 1000 t3) "ms to print count: " counted)
+          [ff t4] (bench (first sorted))
+          _ (println "Took" (* 1000 t4) "ms to take first element: " ff)
+          ])))
 
 
 
