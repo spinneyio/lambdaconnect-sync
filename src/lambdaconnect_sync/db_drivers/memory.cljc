@@ -444,10 +444,9 @@
   "We assume that collisions never happen. Provided that we deal with only a few models it is a reasonable assumption."
   [model]
   (let [mh (hash model)]
-    (if-let [rels (-> @datomic-rel-cache (get mh))]
-      rels
+    (or (-> @datomic-rel-cache (get mh))
       (let [new-rels (get-datomic-relationships-from-model model)] 
-        (swap! datomic-rel-cache #(assoc % mh new-rels))
+        (swap! datomic-rel-cache assoc mh new-rels)
         new-rels))))
 
 (defn- apply-transaction 
@@ -468,7 +467,7 @@
                             (assoc % :db/id (str (random-uuid)))
                             %) 
                          transaction)
-        ;; 15
+
         ids (p :ids (->> transaction
                          (map (partial get-ids-from-entry datomic-relationships))
                          (reduce union #{})))
