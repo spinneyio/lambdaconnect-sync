@@ -46,18 +46,20 @@
 
               [transaction [c1 _]] (sync/push-transaction b/mobile-sync-config input-1 nil empty-db entities-by-name nil (date-parser "2060-01-01T01:01:00.000Z"))
               after-import (db/speculate b/mobile-sync-config empty-db transaction)
-              revision (db/get-sync-revision b/mobile-sync-config after-import)]          
+              revision (db/get-sync-revision b/mobile-sync-config after-import)
+              baby-1 (get-in after-import [:snapshots (:newest-snapshot-idx after-import) :collections "SNBaby" :collection-uuid-index #uuid "f845c7d2-391e-49af-af2e-8e19e28a4751"])
+              sleep-1 (get-in after-import [:snapshots (:newest-snapshot-idx after-import) :collections "SNActiveSleep" :collection-uuid-index #uuid "5c197ca6-fe43-4168-b803-754d400b8828"])
+              sleep-2 3]          
 
-          (let [updated-at (get-in after-import [:snapshots (:newest-snapshot-idx after-import) :collections "SNBaby" :collection-content 2 :app/updatedAt])]
-            (is (inst? updated-at) (class updated-at)))
+          (let [updated-at (get-in after-import [:snapshots (:newest-snapshot-idx after-import) :collections "SNBaby" :collection-content baby-1 :app/updatedAt])]
+            (is (inst? updated-at) #?(:clj (class updated-at) :cljs updated-at)))
 
-
-          (let [sleep-rel (get-in after-import [:snapshots (:newest-snapshot-idx after-import) :collections "SNBaby" :collection-content 2 :SNBaby/activeSleep])]
+          (let [sleep-rel (get-in after-import [:snapshots (:newest-snapshot-idx after-import) :collections "SNBaby" :collection-content baby-1 :SNBaby/activeSleep])]
             (is (map? sleep-rel))
             (is (uuid? (:app/uuid sleep-rel)))
             (is (int? (:db/id sleep-rel))))
           
-          (let [sleep-rels (get-in after-import [:snapshots (:newest-snapshot-idx after-import) :collections "SNActiveSleep" :collection-content 1 :SNBaby/_activeSleep])
+          (let [sleep-rels (get-in after-import [:snapshots (:newest-snapshot-idx after-import) :collections "SNActiveSleep" :collection-content sleep-1 :SNBaby/_activeSleep])
                 sleep-rel (first sleep-rels)]
             (is (set? sleep-rels) sleep-rel)
             (is (uuid? (:app/uuid sleep-rel)))
@@ -92,20 +94,21 @@
               after-import2 (db/speculate b/mobile-sync-config after-import transaction)
               revision (db/get-sync-revision b/mobile-sync-config after-import2)]
 
-              (let [old-sleep (get-in after-import2 [:snapshots (:newest-snapshot-idx after-import2) :collections "SNActiveSleep" :collection-content 1])]
+
+              (let [old-sleep (get-in after-import2 [:snapshots (:newest-snapshot-idx after-import2) :collections "SNActiveSleep" :collection-content sleep-1])]
                 (is (= false (:app/active old-sleep)) old-sleep)
                 (is (empty? (:SNBaby/_activeSleep old-sleep))))
 
-              (let [new-sleep (get-in after-import2 [:snapshots (:newest-snapshot-idx after-import2) :collections "SNActiveSleep" :collection-content 3])]
-                (is (= #{{:db/id 2, :app/uuid #uuid "f845c7d2-391e-49af-af2e-8e19e28a4751"}} (:SNBaby/_activeSleep new-sleep)))
+              (let [new-sleep (get-in after-import2 [:snapshots (:newest-snapshot-idx after-import2) :collections "SNActiveSleep" :collection-content sleep-2])]
+                (is (= #{{:db/id baby-1, :app/uuid #uuid "f845c7d2-391e-49af-af2e-8e19e28a4751"}} (:SNBaby/_activeSleep new-sleep)))
                 (is (= true (:app/active new-sleep)) new-sleep))
 
-              (let [baby (get-in after-import2 [:snapshots (:newest-snapshot-idx after-import2) :collections "SNBaby" :collection-content 2])]
-                (is (= {:db/id 3, :app/uuid #uuid "5c197ca6-fe43-4168-b803-754d400b8829"} (:SNBaby/activeSleep baby)))
+              (let [baby (get-in after-import2 [:snapshots (:newest-snapshot-idx after-import2) :collections "SNBaby" :collection-content baby-1])]
+                (is (= {:db/id sleep-2, :app/uuid #uuid "5c197ca6-fe43-4168-b803-754d400b8829"} (:SNBaby/activeSleep baby)))
                 (is (= true (:app/active baby)) baby)))))))))
 
 
-(deftest test-to-many-relationship
+(deftest ^:test-refresh/focus test-to-many-relationship
   (testing "Setup;"
     (let [empty-db @b/conn
           entities-by-name (mp/entities-by-name  (b/load-model-fixture "model5.xml"))
@@ -143,27 +146,29 @@
 
               [transaction [c1 _]] (sync/push-transaction b/mobile-sync-config input-1 nil empty-db entities-by-name nil (date-parser "2060-01-01T01:01:00.000Z"))
               after-import (db/speculate b/mobile-sync-config empty-db transaction)
-              revision (db/get-sync-revision b/mobile-sync-config after-import)]          
-;          (pprint transaction)
-;          (pprint (get-in after-import [:snapshots (:newest-snapshot-idx after-import) :collections "SNBaby" :collection-content]))
- ;         (pprint (get-in after-import [:snapshots (:newest-snapshot-idx after-import) :collections "SNSleepPrediction" :collection-content]))
-          (let [updated-at (get-in after-import [:snapshots (:newest-snapshot-idx after-import) :collections "SNBaby" :collection-content 2 :app/updatedAt])]
-            (is (inst? updated-at) (class updated-at)))
-          (let [updated-at (get-in after-import [:snapshots (:newest-snapshot-idx after-import) :collections "SNBaby" :collection-content 3 :app/updatedAt])]
-            (is (inst? updated-at) (class updated-at)))
+              revision (db/get-sync-revision b/mobile-sync-config after-import)
+              baby-1 (get-in after-import [:snapshots (:newest-snapshot-idx after-import) :collections "SNBaby" :collection-uuid-index #uuid "f845c7d2-391e-49af-af2e-8e19e28a4751"])
+              baby-2 (get-in after-import [:snapshots (:newest-snapshot-idx after-import) :collections "SNBaby" :collection-uuid-index #uuid "f845c7d2-391e-49af-af2e-8e19e28a6666"])
 
-          (let [sleep-rel (get-in after-import [:snapshots (:newest-snapshot-idx after-import) :collections "SNSleepPrediction" :collection-content 1 :SNSleepPrediction/baby])]
+              prediction-1 (get-in after-import [:snapshots (:newest-snapshot-idx after-import) :collections "SNSleepPrediction" :collection-uuid-index #uuid "5c197ca6-fe43-4168-b803-754d400b8828"])]          
+
+          (let [updated-at (get-in after-import [:snapshots (:newest-snapshot-idx after-import) :collections "SNBaby" :collection-content baby-1 :app/updatedAt])]
+            (is (inst? updated-at) #?(:clj (class updated-at) :cljs updated-at)))
+          (let [updated-at (get-in after-import [:snapshots (:newest-snapshot-idx after-import) :collections "SNBaby" :collection-content baby-2 :app/updatedAt])]
+            (is (inst? updated-at) #?(:clj (class updated-at) :cljs updated-at)))
+
+          (let [sleep-rel (get-in after-import [:snapshots (:newest-snapshot-idx after-import) :collections "SNSleepPrediction" :collection-content prediction-1 :SNSleepPrediction/baby])]
             (is (map? sleep-rel))
             (is (uuid? (:app/uuid sleep-rel)))
             (is (int? (:db/id sleep-rel))))
           
-          (let [sleep-rels (get-in after-import [:snapshots (:newest-snapshot-idx after-import) :collections "SNBaby" :collection-content 2 :SNSleepPrediction/_baby])
+          (let [sleep-rels (get-in after-import [:snapshots (:newest-snapshot-idx after-import) :collections "SNBaby" :collection-content baby-1 :SNSleepPrediction/_baby])
                 sleep-rel (first sleep-rels)]
             (is (set? sleep-rels) sleep-rel)
             (is (uuid? (:app/uuid sleep-rel)))
             (is (int? (:db/id sleep-rel))))
 
-          (let [sleep-rels (get-in after-import [:snapshots (:newest-snapshot-idx after-import) :collections "SNBaby" :collection-content 3 :SNSleepPrediction/_baby])
+          (let [sleep-rels (get-in after-import [:snapshots (:newest-snapshot-idx after-import) :collections "SNBaby" :collection-content baby-2 :SNSleepPrediction/_baby])
                 sleep-rel (first sleep-rels)]
             (is (or (nil? sleep-rels) (and (set? sleep-rels) (empty? sleep-rels))) sleep-rels))
 
@@ -202,15 +207,15 @@
               after-import2 (db/speculate b/mobile-sync-config after-import transaction)
               revision (db/get-sync-revision b/mobile-sync-config after-import2)]
 
-              (let [old-baby (get-in after-import2 [:snapshots (:newest-snapshot-idx after-import2) :collections "SNBaby" :collection-content 2])]
+              (let [old-baby (get-in after-import2 [:snapshots (:newest-snapshot-idx after-import2) :collections "SNBaby" :collection-content baby-1])]
                 (is (empty? (:SNSleepPrediction/_baby old-baby)) old-baby)
                 (is (set? (:SNSleepPrediction/_baby old-baby)) old-baby)
-                (is (= true (:app/active old-baby)) old-baby))
+                (is (= true (:app/active old-baby)) old-baby)) 
 
-              (let [new-baby (get-in after-import2 [:snapshots (:newest-snapshot-idx after-import2) :collections "SNBaby" :collection-content 3])]
-                (is (= #{{:db/id 1, :app/uuid #uuid "5c197ca6-fe43-4168-b803-754d400b8828"}} (:SNSleepPrediction/_baby new-baby)))
+              (let [new-baby (get-in after-import2 [:snapshots (:newest-snapshot-idx after-import2) :collections "SNBaby" :collection-content baby-2])]
+                (is (= #{{:db/id prediction-1, :app/uuid #uuid "5c197ca6-fe43-4168-b803-754d400b8828"}} (:SNSleepPrediction/_baby new-baby)))
                 (is (= true (:app/active new-baby)) new-baby))
 
-              (let [prediction (get-in after-import2 [:snapshots (:newest-snapshot-idx after-import2) :collections "SNSleepPrediction" :collection-content 1])]
-                (is (= {:db/id 3, :app/uuid #uuid "f845c7d2-391e-49af-af2e-8e19e28a6666"} (:SNSleepPrediction/baby prediction)))
+              (let [prediction (get-in after-import2 [:snapshots (:newest-snapshot-idx after-import2) :collections "SNSleepPrediction" :collection-content prediction-1])]
+                (is (= {:db/id baby-2, :app/uuid #uuid "f845c7d2-391e-49af-af2e-8e19e28a6666"} (:SNSleepPrediction/baby prediction)))
                 (is (= true (:app/active prediction)) prediction)))))))))

@@ -1,7 +1,7 @@
 {
   "scripts": {
     "test": "npx shadow-cljs compile :test && npx jest",
-    "test-watch": "concurrently \"npx jest --watchAll\" \"npx shadow-cljs watch :test\"",
+    "test-refresh": "concurrently \"npx jest --watchAll\" \"npx shadow-cljs watch :test\"",
     "repl": "npx shadow-cljs node-repl"
   },
   "devDependencies": {

@@ -1,8 +1,10 @@
 (ns tests
     (:require
      [lambdaconnect-sync.test.hooks]
+     [lambdaconnect-sync.test.basic-memory]
      [lambdaconnect-sync.test.core-memory]
      [lambdaconnect-sync.test.push-memory]
+     [lambdaconnect-sync.test.snoozer-memory]
      [lambdaconnect-sync.test.push-foodie-memory]
      [lambdaconnect-sync.test.pull-memory]
      [lambdaconnect-sync.test.benchmark]
