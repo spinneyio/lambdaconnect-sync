@@ -9,6 +9,8 @@
             [clojure.pprint :refer [pprint]]
             [clojure.walk :refer [prewalk postwalk]]
             [clojure.string :refer [lower-case]]
+            [taoensso.tufte :as tufte :refer [defnp p profiled profile]]
+
             [clojure.set :refer [intersection union difference]]
             #?(:clj [clojure.spec.alpha :as s] 
                :cljs [cljs.spec.alpha :as s])))
@@ -99,7 +101,9 @@
 
 (s/def ::transaction (s/coll-of ::transaction-entry))
 
-(defn- lookup-relationship [snapshot allocated-ids relationship id-or-lookup]
+(defn- lookup-relationship 
+  "Tries to look up entity ID if it gets a map with at least {:app/uuid ....}. Otherwise it just returns the entity id"
+  [snapshot allocated-ids relationship id-or-lookup]
   (assert relationship)
   (if (pos-int? id-or-lookup) 
     id-or-lookup
@@ -233,12 +237,12 @@
           (and (not (:to-many relationship))
                (:to-many inverse-relationship))         
           
-          (let [old-value (get-in snapshot 
-                                  [:collections
-                                   entity-name
-                                   :collection-content
-                                   entity-id
-                                   attribute-key])]
+          (let [old-value (:db/id (get-in snapshot 
+                                          [:collections
+                                           entity-name
+                                           :collection-content
+                                           entity-id
+                                           attribute-key]))]
             
             (cond-> snapshot
             
@@ -434,6 +438,17 @@
                         (t/datomic-inverse-name inverse-relationship)]
                        #(disj (or % #{}) (id->rel entity-id)))))))))
 
+(def datomic-rel-cache (atom {})) 
+
+(defn- get-cached-datomic-relationships-from-model 
+  "We assume that collisions never happen. Provided that we deal with only a few models it is a reasonable assumption."
+  [model]
+  (let [mh (hash model)]
+    (if-let [rels (-> @datomic-rel-cache (get mh))]
+      rels
+      (let [new-rels (get-datomic-relationships-from-model model)] 
+        (swap! datomic-rel-cache #(assoc % mh new-rels))
+        new-rels))))
 
 (defn- apply-transaction 
   [database transaction]
@@ -442,94 +457,169 @@
   (s/assert ::transaction transaction)
   
   (let [snapshot (get-in database [:snapshots (:newest-snapshot-idx database)])
+        entities-by-name (:entities-by-name database)
         new-snapshot-idx (inc (:newest-snapshot-idx database))
         
         ;; This could be cached for performance if required:
-        datomic-relationships (get-datomic-relationships-from-model (:entities-by-name database))
+        datomic-relationships (get-cached-datomic-relationships-from-model (:entities-by-name database))
 
         ;; Some maps might not include :db/id, we then assign random ones.
         transaction (map #(if (and (map? %) (not (:db/id %))) 
                             (assoc % :db/id (str (random-uuid)))
                             %) 
                          transaction)
-        ids (->> transaction
-                 (map (partial get-ids-from-entry datomic-relationships))
-                 (reduce union #{}))
+        ;; 15
+        ids (p :ids (->> transaction
+                         (map (partial get-ids-from-entry datomic-relationships))
+                         (reduce union #{})))
         
         new-ids (filter string? ids)
         starting-id  (:inc-max-entity-id database)
         ending-id (+ starting-id (count new-ids))
         allocated-ids (range starting-id ending-id)
-        id-to-correct-id (merge 
-                          (into {} (map vector new-ids allocated-ids))
-                          (into {} (map #(vector % %) (remove string? ids))))
-
+        id-to-correct-id (p :ids-merge 
+                            (merge 
+                             (into {} (map vector new-ids allocated-ids))
+                             (into {} (map #(vector % %) (remove string? ids)))))
+        
         ;; Replacing temporary ids with newly assigned ones:
-        transaction (map (partial update-ids-in-entry datomic-relationships id-to-correct-id) 
-                         transaction)
+        transaction (p :update-ids
+                       (map (partial update-ids-in-entry datomic-relationships id-to-correct-id) 
+                            transaction))
 
         ;; Unpacking all the convenience "{:db/id ... :app/uuid ... :NOUser/fullName ....}" entries:
-        transaction (mapcat (fn [entry] (if (map? entry) 
-                                            (mapcat 
-                                             (fn [[attr value]]
-                                               (if (sequential? value)
-                                                 (map #(vector :db/add (:db/id entry) attr %) value)
-                                                 [[:db/add (:db/id entry) attr value]]))   
-                                             (dissoc entry :db/id))
-                                            [entry]))  
-                              transaction)
+        transaction (p :unpack 
+                       (mapcat (fn [entry] (if (map? entry) 
+                                             (mapcat 
+                                              (fn [[attr value]]
+                                                (if (sequential? value)
+                                                  (map #(vector :db/add (:db/id entry) attr %) value)
+                                                  [[:db/add (:db/id entry) attr value]]))   
+                                              (dissoc entry :db/id))
+                                             [entry]))  
+                               transaction))
 
-        allocated-ids-set (set allocated-ids)
+        transaction (p :group-by (group-by (fn [[_ entity-id attribute-key]]
+                                             [entity-id attribute-key]) transaction))
+
+        update-add (fn [[add remove :as action] new-val entries]
+                     (if-not (nil? add)
+                       (do (assert (= add new-val) (str entries))
+                           action)
+                       [new-val remove]))
+
+        update-remove (fn [[add remove :as action] old-val entries]
+                        (if-not (nil? remove)
+                          (do (assert (= remove old-val) (str entries))
+                              action)
+                          [add old-val]))
+
+        ;; The code below reduces each group of transaction entries pertaining to a single 
+        ;; (entity-id, attribute-key) pair to a single combined entry and checks their 
+        ;; consistency using assertions.
+
+        transaction (p :conflicts                        
+                       (mapcat 
+                        (fn [entries] 
+                          (if (= (count entries) 1)
+                            entries                                   
+                            (let [[_ entity-id attribute-key] (first entries)]
+                              (if (and (datomic-relationships attribute-key)
+                                       (-> entities-by-name
+                                           (get (namespace attribute-key))
+                                           :relationships
+                                           (get (name attribute-key))
+                                           :to-many))
+                                ;; For to-many relationships we just make sure there is no CAS
+                                (do
+                                  (doseq [[op] entries]
+                                    (assert (and (not= op :db/cas)
+                                                 (not= op :db.fn/cas)) (str entries)))
+                                  (distinct entries))
+                                
+                                ;; Each group will have a single representative elected
+                                (let [[add remove] 
+                                      (reduce (fn [[add remove :as action] 
+                                                   [op entity-id attribute-key old-or-new new]]
+                                                (case op 
+                                                  :db/add (update-add action old-or-new entries)
+                                                  :db/remove (update-remove action old-or-new entries)
+                                                  :db/cas (-> action
+                                                              (update-remove old-or-new entries)
+                                                              (update-add new entries))
+                                                  :db.fn/cas (-> action
+                                                                 (update-remove old-or-new entries)
+                                                                 (update-add new entries))
+                                                  action)) 
+                                              [nil nil] entries)]
+                                  (cond (and (nil? add) (nil? remove)) [(first entries)]
+                                        
+                                        (and (nil? add) (not (nil? remove))) 
+                                        [[:db/retract entity-id attribute-key remove]]
+                                        
+                                        (and (not (nil? add)) (nil? remove)) 
+                                        [[:db/add entity-id attribute-key add]]
+                                        
+                                        :default [[:db/cas entity-id attribute-key remove add]])))))) 
+                        (vals transaction)))
         
-        entities-by-id (merge (:ids-to-entity-names snapshot)
-                              (->> transaction
-                                   (filter (fn [[_ id]] (allocated-ids-set id)))
-                                   (filter (fn [[_ _ attr]] (not= (namespace attr) "app")))
-                                   (map (fn [[_ id attr]] [id (namespace attr)]))
-                                   (into {})))
+        allocated-ids-set (set allocated-ids)
+
+        entities-by-id (p :merge-ids 
+                          (merge (:ids-to-entity-names snapshot)
+                                 (->> transaction
+                                      (keep (fn [[_ id attr]]
+                                              (when (and (allocated-ids-set id)
+                                                         (not= (namespace attr) "app")) 
+                                                [id (namespace attr)])
+                                              ))
+                                      (into {}))))
+
         ;; Apply transactions in a particular  order that ensures data compatibility + remove duplicate entries:
-        transaction (sort-by (fn [[op _ attr]]
-                               (case op 
-                                 :db/cas 1
-                                 :db.fn/cas 1
-                                 :db/retract 2
-                                 :db/add (if-not (datomic-relationships attr) 3 4)
-                                 :db/retractEntity 5)) 
-                             (set transaction))
+        transaction (p :sort
+                       (sort-by (fn [[op _ attr]]
+                                  (case op 
+                                    :db/cas 1
+                                    :db.fn/cas 1
+                                    :db/retract 2
+                                    :db/add (if-not (datomic-relationships attr) 3 4)
+                                    :db/retractEntity 5)) 
+                                transaction))
 
         ;; Add the "ident" and :db/id to every entity
 
-        new-snapshot (reduce (fn [snapshot allocated-id]
-                               (-> snapshot 
-                                   (assoc-in [:collections                                              
-                                              (entities-by-id allocated-id)
-                                              :collection-content
-                                              allocated-id
-                                              (keyword (entities-by-id allocated-id)
-                                                       "ident__")]
-                                             true)
-                                   (assoc-in [:collections
-                                              (entities-by-id allocated-id)
-                                              :collection-content
-                                              allocated-id
-                                              :db/id]
-                                             allocated-id)))
-                             snapshot allocated-ids)
+        new-snapshot (p :reduce-1 (reduce (fn [snapshot allocated-id]
+                                          (-> snapshot 
+                                              (assoc-in [:collections                                              
+                                                         (entities-by-id allocated-id)
+                                                         :collection-content
+                                                         allocated-id
+                                                         (keyword (entities-by-id allocated-id)
+                                                                  "ident__")]
+                                                        true)
+                                              (assoc-in [:collections
+                                                         (entities-by-id allocated-id)
+                                                         :collection-content
+                                                         allocated-id
+                                                         :db/id]
+                                                        allocated-id)))
+                                        snapshot allocated-ids))
         ;; Apply transaction entries one by one:
-        new-snapshot (reduce 
-                      (fn [snapshot transaction]
-                        (process-transaction-entry transaction snapshot database datomic-relationships entities-by-id allocated-ids))
-                      new-snapshot transaction)
+        new-snapshot (p :reduce-2
+                        (reduce 
+                         (fn [snapshot transaction]
+                           (process-transaction-entry transaction snapshot database datomic-relationships entities-by-id allocated-ids))
+                         new-snapshot transaction))
 
         ;; Update the :collection-uuid-index for each collection that has entities added
-        new-snapshot (reduce (fn [snapshot [entity-name allocated-ids]]                          
-                               (update-in snapshot [:collections entity-name :collection-uuid-index]
-                                          #(merge % 
-                                               (into {}
-                                                     (map (fn [allocated-id]
-                                                            {(get-in snapshot [:collections entity-name :collection-content allocated-id :app/uuid]) allocated-id}) 
-                                                          allocated-ids)))))                             
-                             new-snapshot (group-by entities-by-id allocated-ids))
+        new-snapshot (p :reduce-3 (reduce (fn [snapshot [entity-name allocated-ids]]                          
+                                            (update-in snapshot [:collections entity-name :collection-uuid-index]
+                                                       #(merge % 
+                                                               (into {}
+                                                                     (map (fn [allocated-id]
+                                                                            {(get-in snapshot [:collections entity-name :collection-content allocated-id :app/uuid]) allocated-id}) 
+                                                                          allocated-ids)))))                             
+                                          new-snapshot (group-by entities-by-id allocated-ids)))
 
 
         new-snapshot (assoc new-snapshot :ids-to-entity-names entities-by-id)
