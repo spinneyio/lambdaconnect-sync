@@ -24,7 +24,7 @@
          objects (db/get-objects-by-ids config entity ids snapshot true)
          proto-object (merge
                        (into {} (map (fn [r] [(t/datomic-name r) (if (:to-many r) [] nil)]) (vals (:relationships entity))))
-                       (into {} (map (fn [a] [(t/datomic-name a) (:default-value a)]) (filter :default-value (vals (:attributes entity))))))
+                       (into {} (map (fn [a] [(t/datomic-name a) (:default-value a)]) (filter #(and (:default-value %) (not (:optional %))) (vals (:attributes entity))))))
          results (map #(-> %
                            (mp/replace-inverses entity)
                            ((partial merge proto-object))
