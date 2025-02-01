@@ -330,9 +330,10 @@
                                    
                                    _ (log-with-fn (:log config) "CONFLICT R:: " conflict-resolved-object)
                                    
-                                   overriden-object ((if (created-entities-uuids db-uuid)
-                                                       conflicts/override-creation-attributes
-                                                       conflicts/override-update-attributes)
+                                   overriden-object ((cond ;; In slave mode we do not override creation and modification attributes
+                                                       slave-mode? (fn [o _ _ _ _] o)
+                                                       (created-entities-uuids db-uuid) conflicts/override-creation-attributes                                                       
+                                                       :default conflicts/override-update-attributes)
                                                      conflict-resolved-object internal-user snapshot entity now)
                                    
                                    _ (log-with-fn (:log config) "OVERRIDEN R:: " overriden-object)
