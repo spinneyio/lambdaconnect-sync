@@ -170,31 +170,34 @@
                                allocated-ids)))
 
 (defmethod process-transaction-entry :db/add 
-  [[_ entity-id attribute-key new-value] 
+  [[_ entity-id attribute-key new-value :as entry] 
    snapshot
    database
    datomic-relationships 
    entities-by-id
    allocated-ids]
-  (let [entity-name (entities-by-id entity-id)]
-    (assert entity-name "Each new added entity has to have at least one attribute that differentiates it from other entities set (bare minimum is :EntityName/ident__")
+  (let [entity-name (entities-by-id entity-id)
+        entity (get-in database [:entities-by-name entity-name])]
+    (assert (and entity-name entity) (str "Each new added entity has to have at least one attribute that differentiates it from other entities set (bare minimum is :EntityName/ident__) : " entity-name))    
     (if-not (datomic-relationships attribute-key)
       ;; Attribute
-      (assoc-in snapshot [:collections 
-                          entity-name 
-                          :collection-content 
-                          entity-id 
-                          attribute-key] new-value)
+      (let [attribute (get-in entity [:attributes (name attribute-key)])]
+        (assert (or attribute
+                    (and (= "ident__" (name attribute-key))
+                         (= entity-name (namespace attribute-key)))) 
+                (str "No " attribute-key " attribute or relationship present on entity " entity-name ":: " entry))
+        (assoc-in snapshot [:collections 
+                            entity-name 
+                            :collection-content 
+                            entity-id 
+                            attribute-key] new-value))
       ;; Relationship
-      (let [relationship (get-in database [:entities-by-name
-                                           entity-name
-                                           :datomic-relationships
-                                           (name attribute-key)])
+      (let [relationship (get-in entity [:datomic-relationships (name attribute-key)])
+            _ (assert relationship)
             inverse-relationship (get-in database [:entities-by-name
                                                    (:inverse-entity relationship)
                                                    :relationships
-                                                   (:inverse-name relationship)])
-            _ (assert relationship)
+                                                   (:inverse-name relationship)])            
             _ (assert inverse-relationship)
 
             id->rel (fn [id]
