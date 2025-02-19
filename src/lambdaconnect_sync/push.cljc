@@ -330,9 +330,10 @@
                                    
                                    _ (log-with-fn (:log config) "CONFLICT R:: " conflict-resolved-object)
                                    
-                                   overriden-object ((if (created-entities-uuids db-uuid)
-                                                       conflicts/override-creation-attributes
-                                                       conflicts/override-update-attributes)
+                                   overriden-object ((cond ;; In slave mode we do not override creation and modification attributes
+                                                       slave-mode? (fn [o _ _ _ _] o)
+                                                       (created-entities-uuids db-uuid) conflicts/override-creation-attributes                                                       
+                                                       :default conflicts/override-update-attributes)
                                                      conflict-resolved-object internal-user snapshot entity now)
                                    
                                    _ (log-with-fn (:log config) "OVERRIDEN R:: " overriden-object)
@@ -382,23 +383,26 @@
 
 (defn- internal-push-transaction
   [config incoming-json internal-user snapshot entities-by-name scoped-push-input-for-user now slave-mode? sync-revision-for-slave-mode]
-  (try 
+  (try
     (log-with-fn (:log config) "=========---------===========--------- PUSH ----------============-----------============")
     (log-with-fn (:log config) "INCOMING: " incoming-json)
     (log-with-fn (:log config) "%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%")
     (let [; Step one - mapping of the incoming json into our model + validation
-          mapped-input (p :mapped-input 
+          mapped-input (p :mapped-input
                           (mu/update-vals
                            incoming-json
-                           (fn [entity-name objects]                             
+                           (fn [entity-name objects]
                              (let [entity (get entities-by-name entity-name)]
-                               (assert entity (str "You are using an outdated version of the app. DB model does not contain entity: " entity-name))                             
+                               (assert entity (str "You are using an outdated version of the app. DB model does not contain entity: " entity-name))
                                (mapv
                                 (fn [json-obj]
                                   (let [transformed (mp/json-to-clojure json-obj entity)
                                         json-obj-spec (mp/spec-for-name (:name entity))]
-                                    (when-not (spec/valid? json-obj-spec transformed)                                      
-                                      (throw (lm-spec/exception-from-failed-spec json-obj-spec transformed)))                                            
+                                    (when-not (spec/valid? json-obj-spec transformed)
+                                      (when-not slave-mode?
+                                        (throw (lm-spec/exception-from-failed-spec json-obj-spec transformed)))
+                                      (assert (spec/valid? json-obj-spec transformed) 
+                                              (str "Spec failed: " (spec/explain-str json-obj-spec transformed))))
                                     transformed)) objects)))))
           [input scoped-uuids] (p :scoped-push-input (scoped-push-input-for-user mapped-input internal-user entities-by-name snapshot))
           rel-objs-to-fetch (p :compute-rel-objs-to-fetch
@@ -424,9 +428,9 @@
                               "Push after scoping: " input " \n")
             error-info {:wrong-relations response :invalid-uuids invalid-uuids :input-after-scope input}]
 
-        (p :duplicates(check-for-duplicates config input entities-by-name snapshot))       
+        (p :duplicates (check-for-duplicates config input entities-by-name snapshot))
         (if foreign-keys-in-db
-          (do 
+          (do
             (log-with-fn (:log config) "=========---------===========--------- /PUSH ----------============-----------============")
             [transaction [created-objects updated-objects] scoped-uuids])
           (do

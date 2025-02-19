@@ -80,21 +80,21 @@
   (assert snapshot)
   (assert entities-by-name)
   (assert (or (not scoping-constants) (and scoping-edn (fn? scoping-constants) (not (:constants scoping-edn)))))
-  (try    
+  (try
     (let [config (if (:driver config)
                    config
                    (assoc config :driver (datomic-driver/->DatomicDatabaseDriver config)))
           scoping-edn-with-constants
-          (if scoping-constants 
+          (if scoping-constants
             (assoc scoping-edn :constants (scoping-constants snapshot internal-user))
             scoping-edn)
           mapping-fun pmap ;; map for debug, pmap for production
           sync-revision (db/get-sync-revision config snapshot)
-        [scoped-tags scoped-ids tags-by-ids] 
+          [scoped-tags scoped-ids tags-by-ids]
           (when scoping-edn
             (let [scoped-tags (scoping/scope config snapshot internal-user entities-by-name scoping-edn-with-constants false (set (keys scoping-edn)))]
               [scoped-tags (scoping/reduce-entities scoped-tags) (scoping/inverse-entities scoped-tags)]))
-          
+
           objects (mapping-fun (fn [[entity-kw requested-sync-revision]]
                                  (let [entity-name (name entity-kw)
                                        entity (get entities-by-name entity-name)]
@@ -105,24 +105,24 @@
                                          modified-ids (db/get-changed-ids config snapshot entity-name requested-sync-revision entities-by-name entity-scoped-ids)]
                                      [entity-name (db/get-objects-by-ids config entity modified-ids snapshot true)])))
                                incoming-json)]
-      (into {} (doall 
+      (into {} (doall
                 (map (fn [[entity-name objs]]
                        (let [entity (get entities-by-name entity-name)
                                         ; we create all the relationships as empty and later overwrite 
                              proto-object (merge (into {} (map (fn [r] [(mp/datomic-name r) (if (:to-many r) [] nil)]) (vals (:relationships entity))))
                                                  (when-not slave-mode? {:syncRevision sync-revision})
-                                                 (into {} (map (fn [a] [(mp/datomic-name a) (:default-value a)]) (filter :default-value (vals (:attributes entity))))))]
-                        [entity-name (doall (mapping-fun #(-> %
-                                                              (mp/replace-inverses entity true)
-                                                              ((partial merge proto-object))
-                                                              (scoped-object entities-by-name entity scoping-edn scoped-tags scoped-ids tags-by-ids (:constants scoping-edn-with-constants))
-                                                              (mp/clojure-to-json entity)
-                                                              (as-> obj (if slave-mode?
-                                                                          (if-let [sr (:app/syncRevisionFromMaster %)]
-                                                                            (assoc obj "syncRevision" sr)
-                                                                            obj)
-                                                                          obj)))
-                                                  objs))])) objects))))
+                                                 (into {} (map (fn [a] [(mp/datomic-name a) (:default-value a)]) (filter #(and (:default-value %) (not (:optional %))) (vals (:attributes entity))))))]
+                         [entity-name (doall (mapping-fun #(-> %
+                                                               (mp/replace-inverses entity true)
+                                                               ((partial merge proto-object))
+                                                               (scoped-object entities-by-name entity scoping-edn scoped-tags scoped-ids tags-by-ids (:constants scoping-edn-with-constants))
+                                                               (mp/clojure-to-json entity)
+                                                               (as-> obj (if slave-mode?
+                                                                           (if-let [sr (:app/syncRevisionFromMaster %)]
+                                                                             (assoc obj "syncRevision" sr)
+                                                                             obj)
+                                                                           obj)))
+                                                          objs))])) objects))))
     (catch #?(:clj java.util.concurrent.ExecutionException :cljs js/Error) e (throw #?(:clj (.getCause e) :cljs e)))))
   
   

@@ -4,6 +4,7 @@
             [lambdaconnect-sync.test.basic-memory :as b]
             [lambdaconnect-model.tools :as mpt]
             [lambdaconnect-sync.db :as db]
+            [lambdaconnect-sync.migrations :as migrations]
             [lambdaconnect-sync.db-drivers.memory :as memory]
             [lambdaconnect-model.scoping :as scoping]         
 
@@ -48,10 +49,9 @@
      :rejections rejections}))
 
 (defn pull [snapshot user-uuid params suppress-log? constants]
-  (let [
-        entities-by-name (mp/entities-by-name (b/load-model-fixture "test-model-0.xml"))
+  (let [entities-by-name (mp/entities-by-name (b/load-model-fixture "test-model-0.xml"))
         ;; Scoping doesnt work for in-memory driver
-
+        
         ;; scoping-edn (read-edn "env/test/resources/test-scope-0.edn")
         ;; _ (scoping/validate-pull-scope entities-by-name scoping-edn)                
         ;; pull-scoping-edn (assoc scoping-edn
@@ -66,31 +66,51 @@
 ]
     (sync/pull config params user snapshot entities-by-name nil)))
 
+
+(deftest test-core-data-xml-migrations
+  (let [model (mp/entities-by-name (b/load-model-fixture "test-model-0.xml"))
+        wrong-model (assoc-in model ["LAGame" :attributes "gameDescription" :optional] true)
+        new-attribute (assoc (get-in model ["LAGame" :attributes "gameDescription"])
+                             :name "lolo")
+        new-attribute-wrong-model (assoc-in model ["LAGame" :attributes "lolo"] new-attribute)
+        new-fixed-attribute (assoc new-attribute :default-value "aaaa")
+        new-attribute-model (assoc-in model ["LAGame" :attributes "lolo"] new-fixed-attribute)
+        new-entity-model (assoc model "LADoom" (get model "LAGame"))]
+    (is (= (count model) 6))
+    (empty? (migrations/model-migration-tx-builder model model))
+    (is (thrown-with-msg? #?(:clj clojure.lang.ExceptionInfo :cljs js/Error) #"Migration failed" (migrations/model-migration-tx-builder model wrong-model)))
+    (is (thrown-with-msg? #?(:clj clojure.lang.ExceptionInfo :cljs js/Error) #"Migration failed: New non-optional attributes must have a default value. Entity: 'LAGame' attribute 'lolo'" (migrations/model-migration-tx-builder model new-attribute-wrong-model)))
+
+    (is (= [[:db/add 7 :LAGame/lolo "aaaa"]]
+           ((get (migrations/model-migration-tx-builder model new-attribute-model)
+                 "LAGame") {:db/id 7})))
+
+    (is (empty? (migrations/model-migration-tx-builder model new-entity-model)))))
+    
 (deftest test-core-data-xml-conversion
   (testing "Reading model file one"
-    (let [model (mp/entities-by-name (b/load-model-fixture "test-model-0.xml"))]
-      (is (= (count model) 6))
+    (let [model (mp/entities-by-name (b/load-model-fixture "test-model-0.xml"))]                
       (testing ";Json to model converter"
-        
-          (let [game-model (get model "LAGame")
 
-                json (b/slurp-fixture "fixtures-0.json")   
-                ent (-> json (get "LAGame") first (mp/json-to-clojure game-model))
-                generated-games (gen/sample (s/gen (mp/spec-for-name :LAGame)) 200)]
-            (is (s/valid? (mp/spec-for-name :LAGame) ent) (s/explain-str (mp/spec-for-name :LAGame) ent))
-            (testing ";Inverse"
-              (is (= (mp/clojure-to-json ent game-model) (-> json (get "LAGame") first)))
-              (doseq [generated-game generated-games]
-                (let [processed-game (-> generated-game
-                                         (mp/clojure-to-json game-model)
-                                         (mp/json-to-clojure game-model))]
-                  (is (mpt/compare-objects generated-game processed-game game-model)))))))))
+        (let [game-model (get model "LAGame")
+
+              json (b/slurp-fixture "fixtures-0.json")
+              ent (-> json (get "LAGame") first (mp/json-to-clojure game-model))
+              generated-games (gen/sample (s/gen (mp/spec-for-name :LAGame)) 200)]
+          (is (s/valid? (mp/spec-for-name :LAGame) ent) (s/explain-str (mp/spec-for-name :LAGame) ent))
+          (testing ";Inverse"
+            (is (= (mp/clojure-to-json ent game-model) (-> json (get "LAGame") first)))
+            (doseq [generated-game generated-games]
+              (let [processed-game (-> generated-game
+                                       (mp/clojure-to-json game-model)
+                                       (mp/json-to-clojure game-model))]
+                (is (mpt/compare-objects generated-game processed-game game-model)))))))))
 
   (testing "Schema from model"
     (let [model (mp/entities-by-name (b/load-model-fixture "test-model-0.xml"))
           schema (mp/datomic-schema model)]
       (is (= (+ 43 8 (count model)) (count schema)))))
-  
+
   (testing "User info"
     (let [model (mp/entities-by-name (b/load-model-fixture "test-model-0.xml"))]
       (is (seq (get-in model ["LAGame" :user-info])))
@@ -134,7 +154,7 @@
                     (assoc :LAUser/organisedGames [])
                     (assoc :LAUser/playsFor []))
         la-location (-> (gen/sample (s/gen (mp/spec-for-name :LALocation)) 100)
-                        (first)                        
+                        (first)
                         (assoc :app/uuid location-uuid)
                         (assoc :LALocation/city "Krakow")
                         (assoc :LALocation/latitude 31.21)
@@ -143,11 +163,11 @@
                         (assoc :LALocation/users [{:app/uuid (:app/uuid la-user)}])
                         (assoc :LALocation/ticketsSold []))
         json {"LAUser" [(mp/clojure-to-json la-user (get ebn "LAUser"))]
-              "LALocation" [(mp/clojure-to-json la-location (get ebn "LALocation"))]} 
-        {:keys [tx rejections]} 
+              "LALocation" [(mp/clojure-to-json la-location (get ebn "LALocation"))]}
+        {:keys [tx rejections]}
         (testing "creating an object"
           (push-transaction snapshot user-uuid json
-                            true (fn [_snapshot _user] 
+                            true (fn [_snapshot _user]
                                    {:wow (delay true)
                                     :are-you-there? false
                                     :can-create? true
@@ -156,37 +176,37 @@
         {:keys [rejected-objects rejected-fields]} rejections]
     (is (not (empty? tx)))
     (is (empty? rejected-objects))
-    (is (empty? rejected-fields))    
-    
+    (is (empty? rejected-fields))
+
     (testing "Do a pull and see what came in"
       (let [snapshot (db/speculate b/mobile-sync-config snapshot tx)
-            result (pull snapshot user-uuid {"LAUser" 0 "LALocation" 0} 
+            result (pull snapshot user-uuid {"LAUser" 0 "LALocation" 0}
                          true (fn [_snapshot _user]
                                 {:wow (delay true)
                                  :are-you-there? false
                                  :can-create? true
-                                 :whatsupp? true                                
+                                 :whatsupp? true
                                  :lat 82.3
                                  :some-new-fields ["firstName"]}))]
-        (is (= "Krakow" (-> result 
+        (is (= "Krakow" (-> result
                             (get "LALocation")
                             (first)
                             (get "city"))))
         ;; Replacement with a constant doesnt work       
-        (is (< Epsilon (abs (- 82.3 (-> result 
+        (is (< Epsilon (abs (- 82.3 (-> result
                                         (get "LALocation")
                                         (first)
                                         (get "latitude"))))))))
-    
+
     (testing "Try editing succeeds and replaced fields are actually replaced (no scoping)"
-      (let [snapshot (db/speculate b/mobile-sync-config snapshot tx)            
-            {:keys [tx rejections]} 
-            (push-transaction snapshot user-uuid {"LALocation" 
-                                                  [(mp/clojure-to-json (assoc la-location 
+      (let [snapshot (db/speculate b/mobile-sync-config snapshot tx)
+            {:keys [tx rejections]}
+            (push-transaction snapshot user-uuid {"LALocation"
+                                                  [(mp/clojure-to-json (assoc la-location
                                                                               :LALocation/city "Bombaj"
-                                                                              :LALocation/latitude 85.0) 
-                                                                       (get ebn "LALocation"))]} 
-                              true (fn [_snapshot _user] 
+                                                                              :LALocation/latitude 85.0)
+                                                                       (get ebn "LALocation"))]}
+                              true (fn [_snapshot _user]
                                      {:wow (delay true)
                                       :are-you-there? false
                                       :can-create? true
@@ -197,5 +217,28 @@
 
         (is (not (empty? tx)))
         (is (empty? rejected-fields))
-        (is (empty? rejected-objects))))))
+        (is (empty? rejected-objects))))
+
+    (testing "Absent fields do not count as deletions, while 'nil' fields do"
+      (let [snapshot (db/speculate b/mobile-sync-config snapshot tx)
+            new-location (-> la-location
+                             (assoc :LALocation/city nil)
+                             (mp/clojure-to-json (get ebn "LALocation"))
+                             (dissoc "latitude"))
+
+            {:keys [tx rejections]}
+            (push-transaction snapshot user-uuid {"LALocation"
+                                                  [new-location]}
+                              true (fn [_snapshot _user]
+                                     {:wow (delay true)
+                                      :are-you-there? false
+                                      :can-create? true
+                                      :lat 82.3
+                                      :whatsupp? true
+                                      :some-new-fields ["firstName"]}))
+            {:keys [rejected-objects rejected-fields]} rejections]
+        (is (not (empty? tx)))
+        (is (empty? rejected-fields))
+        (is (empty? rejected-objects))
+        (is (= 1 (count (filter #(= :db/retract (first %)) tx))))))))
 
