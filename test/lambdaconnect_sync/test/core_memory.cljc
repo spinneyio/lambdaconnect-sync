@@ -141,7 +141,7 @@
     (is (empty? rejected-objects))
     (is (empty? rejected-fields))))
 
-(deftest ^:test-refresh/focus
+(deftest 
   replace-fields-wont-work-without-scoping
   (let [user-uuid (random-uuid)
         location-uuid (random-uuid)
