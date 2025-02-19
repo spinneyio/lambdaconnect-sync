@@ -68,15 +68,15 @@
                                                                 (get new-attrs n)])
                                                        (s/intersection old-names new-names))]
                   (assert attribute old-attribute)
+                  ;; Warning - migrations do not ever fail for validation changes
+                  ;; It is the devloper's responsibility to make sure new validation
+                  ;; logic is compatible with the old model.
                   (let [unmodifiable-keys [:optional
-                                           :type
-                                           :regular-expression
-                                           :max-value
-                                           :min-value]]
+                                           :type]]
                     (when (not= (select-keys attribute unmodifiable-keys)
                                 (select-keys old-attribute unmodifiable-keys))
                       (throw (ex-info
-                              (str "Migration failed: [:optional :type :regular-expression :max-value :min-value] of an attribute cannot be changed. Entity: '"
+                              (str "Migration failed: [:optional :type] of an attribute cannot be changed. Entity: '"
                                    entity-name
                                    "' attribute '" (:name attribute) "'.")
                               {:old-entities-by-name old-entities-by-name
