@@ -1,0 +1,906 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<model type="com.apple.IDECoreDataModeler.DataModel" documentVersion="1.0" lastSavedToolsVersion="22225" systemVersion="23B92" minimumToolsVersion="Automatic" sourceLanguage="Swift" userDefinedModelVersionIdentifier="">
+    <entity name="SNActiveSleep" representedClassName="SNActiveSleep" syncable="YES" codeGenerationType="class">
+        <attribute name="active" attributeType="Boolean" defaultValueString="YES" usesScalarValueType="YES"/>
+        <attribute name="createdAt" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="isSuitableForPush" optional="YES" attributeType="Boolean" defaultValueString="NO" usesScalarValueType="YES"/>
+        <attribute name="startDate" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="syncRevision" optional="YES" attributeType="Integer 64" defaultValueString="0" usesScalarValueType="YES"/>
+        <attribute name="updatedAt" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="uuid" attributeType="UUID" usesScalarValueType="YES"/>
+        <relationship name="additionalData" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="SNAdditionalSleepData" inverseName="activeSleep" inverseEntity="SNAdditionalSleepData"/>
+        <relationship name="baby" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="SNBaby" inverseName="activeSleep" inverseEntity="SNBaby"/>
+    </entity>
+    <entity name="SNAdditionalSleepData" representedClassName="SNAdditionalSleepData" syncable="YES" codeGenerationType="class">
+        <attribute name="active" attributeType="Boolean" defaultValueString="YES" usesScalarValueType="YES"/>
+        <attribute name="babyMood" optional="YES" attributeType="String" regularExpressionString="(Happy|Sad)">
+            <userInfo>
+                <entry key="docs" value="How was the baby feeling before going to sleep."/>
+            </userInfo>
+        </attribute>
+        <attribute name="babyMoodAfterWakeup" optional="YES" attributeType="String" regularExpressionString="(Happy|Sad)">
+            <userInfo>
+                <entry key="docs" value="How was the baby feeling after waking up."/>
+            </userInfo>
+        </attribute>
+        <attribute name="circumstances" optional="YES" attributeType="String" regularExpressionString="(InBedAlone|InBedAssisted|ByBreast|ByBottle|Cosleeping|RockedOrInYoke|InStrollerOrCar|InBabySwing)">
+            <userInfo>
+                <entry key="docs" value="Enum with many values to be specified. Examples: in car, cosleeping, in his own bed etc."/>
+            </userInfo>
+        </attribute>
+        <attribute name="createdAt" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="estimatedTimeToFallAsleep" optional="YES" attributeType="String" regularExpressionString="(Short|Average|Long)">
+            <userInfo>
+                <entry key="docs" value="Carer filling the form sees minute intervals as options, frontend should map them to the regex values."/>
+            </userInfo>
+        </attribute>
+        <attribute name="isSuitableForPush" optional="YES" attributeType="Boolean" defaultValueString="NO" usesScalarValueType="YES"/>
+        <attribute name="nightFeedingCount" optional="YES" attributeType="Integer 64" minValueString="0" usesScalarValueType="YES">
+            <userInfo>
+                <entry key="docs" value="Relevant only for the night sleep."/>
+            </userInfo>
+        </attribute>
+        <attribute name="nightWakeupCount" optional="YES" attributeType="Integer 64" minValueString="0" usesScalarValueType="YES">
+            <userInfo>
+                <entry key="docs" value="Relevant only for the night sleep."/>
+            </userInfo>
+        </attribute>
+        <attribute name="sleepType" attributeType="String" minValueString="1" regularExpressionString="(Nap|Sleep)"/>
+        <attribute name="syncRevision" optional="YES" attributeType="Integer 64" defaultValueString="0" usesScalarValueType="YES"/>
+        <attribute name="totalWakeupTime" optional="YES" attributeType="Integer 64" minValueString="0" usesScalarValueType="YES">
+            <userInfo>
+                <entry key="docs" value="Relevant only for the night sleep. Time in which the baby was not asleep during the night (in minutes)."/>
+            </userInfo>
+        </attribute>
+        <attribute name="updatedAt" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="uuid" attributeType="UUID" usesScalarValueType="YES"/>
+        <relationship name="activeSleep" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="SNActiveSleep" inverseName="additionalData" inverseEntity="SNActiveSleep"/>
+        <relationship name="missionCompletion" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="SNMissionCompletion" inverseName="additionalSleepData" inverseEntity="SNMissionCompletion"/>
+        <relationship name="sleepJournalEntry" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="SNSleepJournalEntry" inverseName="additionalData" inverseEntity="SNSleepJournalEntry"/>
+    </entity>
+    <entity name="SNAssignedNapCount" representedClassName="SNAssignedNapCount" syncable="YES" codeGenerationType="class">
+        <attribute name="active" attributeType="Boolean" defaultValueString="YES" usesScalarValueType="YES"/>
+        <attribute name="createdAt" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="isSuitableForPush" optional="YES" attributeType="Boolean" defaultValueString="NO" usesScalarValueType="YES"/>
+        <attribute name="napCount" optional="YES" attributeType="Integer 64" usesScalarValueType="YES">
+            <userInfo>
+                <entry key="docs" value="The value may be null, this means: take default value for a baby, according to its age."/>
+            </userInfo>
+        </attribute>
+        <attribute name="syncRevision" optional="YES" attributeType="Integer 64" defaultValueString="0" usesScalarValueType="YES"/>
+        <attribute name="updatedAt" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="uuid" attributeType="UUID" usesScalarValueType="YES"/>
+        <relationship name="baby" optional="YES" maxCount="1" deletionRule="No Action" destinationEntity="SNBaby" inverseName="assignedNapCounts" inverseEntity="SNBaby"/>
+        <userInfo>
+            <entry key="docs" value="Entity which stores all historical values of assigned nap count. It is required in app (we can't access Datomic history). Do not delete entities unless you are sure that the data is old enough. The assigned nap count for a baby in a moment t is the napCount value of the newest SNAssignedNapCount with createdAt &lt;= t."/>
+        </userInfo>
+    </entity>
+    <entity name="SNBaby" representedClassName="SNBaby" syncable="YES" codeGenerationType="class">
+        <attribute name="active" attributeType="Boolean" defaultValueString="YES" usesScalarValueType="YES"/>
+        <attribute name="assignedNapCount" optional="YES" attributeType="Integer 64" usesScalarValueType="YES">
+            <userInfo>
+                <entry key="docs" value="Deprecated. Instead of modifying this value, create new SNAssignedNapCount entity."/>
+            </userInfo>
+        </attribute>
+        <attribute name="assignedPredictionCohort" optional="YES" attributeType="Integer 64" minValueString="1" maxValueString="5" usesScalarValueType="YES">
+            <userInfo>
+                <entry key="docs" value="Deprecated. 1: All ok, 2: Sleepyhead, 3: Inverted rhythm, 4: Bad naps, OK night sleep, 5: All bad"/>
+            </userInfo>
+        </attribute>
+        <attribute name="assignedPredictionCohortName" optional="YES" attributeType="String" regularExpressionString="(AllOK|Sleepyhead|InvertedRhythm|NapsBadNightOK|AllBad)"/>
+        <attribute name="assignedPredictionGroup" optional="YES" attributeType="Integer 64" minValueString="0" maxValueString="2" defaultValueString="0" usesScalarValueType="YES">
+            <userInfo>
+                <entry key="docs" value="Deprecated. 0: 0-4 days of data, 1: 4 days + &gt;=3 days in last 7 days, 2: 10 days + &gt;=0.5 ratio (fall back on &lt;0.4)"/>
+            </userInfo>
+        </attribute>
+        <attribute name="assignedPredictionGroupName" optional="YES" attributeType="String" defaultValueString="group0" regularExpressionString="(group0|group1|group2)"/>
+        <attribute name="createdAt" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="currentDay" optional="YES" attributeType="Date" usesScalarValueType="NO">
+            <userInfo>
+                <entry key="docs" value="Used for testing: to create predictions in a day in the future, set this field to that day. If set to empty, remove all testing predictions. Should be always empty outside of testing."/>
+            </userInfo>
+        </attribute>
+        <attribute name="dateOfBirth" optional="YES" attributeType="Date" usesScalarValueType="NO">
+            <userInfo>
+                <entry key="docs" value="This field might be empty if the baby is not born yet."/>
+            </userInfo>
+        </attribute>
+        <attribute name="expectedDateOfBirth" optional="YES" attributeType="Date" usesScalarValueType="NO">
+            <userInfo>
+                <entry key="docs" value="This field might be empty if the baby entity was created after the birth and it is not a premature baby. Being a premature baby is determined based on the difference between the expected and the actual date of birth."/>
+            </userInfo>
+        </attribute>
+        <attribute name="gender" attributeType="String" defaultValueString="Unknown" regularExpressionString="(Male|Female|Unknown)"/>
+        <attribute name="isSuitableForPush" optional="YES" attributeType="Boolean" defaultValueString="NO" usesScalarValueType="YES"/>
+        <attribute name="name" attributeType="String" minValueString="1" maxValueString="2000"/>
+        <attribute name="syncRevision" optional="YES" attributeType="Integer 64" defaultValueString="0" usesScalarValueType="YES"/>
+        <attribute name="testCorrection" optional="YES" attributeType="Integer 64" defaultValueString="0" usesScalarValueType="YES">
+            <userInfo>
+                <entry key="docs" value="Used for testing predictions."/>
+            </userInfo>
+        </attribute>
+        <attribute name="updatedAt" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="uuid" attributeType="UUID" usesScalarValueType="YES"/>
+        <relationship name="activeSleep" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="SNActiveSleep" inverseName="baby" inverseEntity="SNActiveSleep">
+            <userInfo>
+                <entry key="docs" value="If missing, the baby is awake."/>
+            </userInfo>
+        </relationship>
+        <relationship name="additionalCarers" optional="YES" toMany="YES" deletionRule="Nullify" destinationEntity="SNCarer" inverseName="additionalCarerOf" inverseEntity="SNCarer">
+            <userInfo>
+                <entry key="docs" value="Not the main owner: the other parent, grandparent, nanny etc."/>
+            </userInfo>
+        </relationship>
+        <relationship name="assignedNapCounts" optional="YES" toMany="YES" deletionRule="Nullify" destinationEntity="SNAssignedNapCount" inverseName="baby" inverseEntity="SNAssignedNapCount"/>
+        <relationship name="course" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="SNCourse" inverseName="baby" inverseEntity="SNCourse"/>
+        <relationship name="mainCarer" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="SNCarer" inverseName="mainCarerOf" inverseEntity="SNCarer">
+            <userInfo>
+                <entry key="docs" value="The carer who has created the baby."/>
+            </userInfo>
+        </relationship>
+        <relationship name="missionCompletions" optional="YES" toMany="YES" deletionRule="Nullify" destinationEntity="SNMissionCompletion" inverseName="baby" inverseEntity="SNMissionCompletion"/>
+        <relationship name="sleepJournalEntries" optional="YES" toMany="YES" deletionRule="Nullify" destinationEntity="SNSleepJournalEntry" inverseName="baby" inverseEntity="SNSleepJournalEntry"/>
+        <relationship name="sleepPredictions" optional="YES" toMany="YES" deletionRule="Nullify" destinationEntity="SNSleepPrediction" inverseName="baby" inverseEntity="SNSleepPrediction"/>
+    </entity>
+    <entity name="SNCarer" representedClassName="SNCarer" syncable="YES" codeGenerationType="class">
+        <attribute name="active" attributeType="Boolean" defaultValueString="YES" usesScalarValueType="YES"/>
+        <attribute name="createdAt" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="isSuitableForPush" optional="YES" attributeType="Boolean" defaultValueString="NO" usesScalarValueType="YES"/>
+        <attribute name="language" attributeType="String" minValueString="2" maxValueString="2" defaultValueString="en" regularExpressionString="[a-z]{2}">
+            <userInfo>
+                <entry key="docs" value="Language of the interface and all course materials."/>
+            </userInfo>
+        </attribute>
+        <attribute name="syncRevision" optional="YES" attributeType="Integer 64" defaultValueString="0" usesScalarValueType="YES"/>
+        <attribute name="updatedAt" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="uuid" attributeType="UUID" usesScalarValueType="YES"/>
+        <relationship name="additionalCarerOf" optional="YES" toMany="YES" deletionRule="Nullify" destinationEntity="SNBaby" inverseName="additionalCarers" inverseEntity="SNBaby">
+            <userInfo>
+                <entry key="docs" value="Only one person can be the main carer of a baby, so this relation is for other carers - the other parent, grandparents, nannies etc."/>
+            </userInfo>
+        </relationship>
+        <relationship name="baseUser" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="SNUser" inverseName="carer" inverseEntity="SNUser"/>
+        <relationship name="mainCarerOf" optional="YES" toMany="YES" deletionRule="Nullify" destinationEntity="SNBaby" inverseName="mainCarer" inverseEntity="SNBaby">
+            <userInfo>
+                <entry key="docs" value="Owner of the baby in the system. Carer can have many babies only if it is a premium user."/>
+            </userInfo>
+        </relationship>
+    </entity>
+    <entity name="SNChapterTemplate" representedClassName="SNChapterTemplate" syncable="YES" codeGenerationType="class">
+        <attribute name="active" attributeType="Boolean" defaultValueString="YES" usesScalarValueType="YES"/>
+        <attribute name="createdAt" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="isSuitableForPush" optional="YES" attributeType="Boolean" defaultValueString="NO" usesScalarValueType="YES"/>
+        <attribute name="syncRevision" optional="YES" attributeType="Integer 64" defaultValueString="0" usesScalarValueType="YES"/>
+        <attribute name="updatedAt" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="uuid" attributeType="UUID" usesScalarValueType="YES"/>
+        <relationship name="blockedByTemplates" optional="YES" toMany="YES" deletionRule="Nullify" destinationEntity="SNCourseGenerationConfig" inverseName="blocksChapterTemplates" inverseEntity="SNCourseGenerationConfig"/>
+        <relationship name="courseChapters" optional="YES" toMany="YES" deletionRule="Nullify" destinationEntity="SNCourseChapter" inverseName="template" inverseEntity="SNCourseChapter"/>
+        <relationship name="generationConfigs" optional="YES" toMany="YES" deletionRule="Nullify" destinationEntity="SNCourseGenerationConfig" inverseName="chapterTemplate" inverseEntity="SNCourseGenerationConfig"/>
+        <relationship name="missions" optional="YES" toMany="YES" deletionRule="Nullify" destinationEntity="SNMission" inverseName="chapter" inverseEntity="SNMission"/>
+        <relationship name="theorySubchapters" optional="YES" toMany="YES" deletionRule="Nullify" destinationEntity="SNTheorySubchapter" inverseName="chapter" inverseEntity="SNTheorySubchapter"/>
+        <relationship name="titles" optional="YES" toMany="YES" deletionRule="Nullify" destinationEntity="SNChapterTitle" inverseName="chapter" inverseEntity="SNChapterTitle"/>
+    </entity>
+    <entity name="SNChapterTitle" representedClassName="SNSubchapterTitle" syncable="YES" codeGenerationType="class">
+        <attribute name="active" attributeType="Boolean" defaultValueString="YES" usesScalarValueType="YES"/>
+        <attribute name="createdAt" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="isSuitableForPush" optional="YES" attributeType="Boolean" defaultValueString="NO" usesScalarValueType="YES"/>
+        <attribute name="language" attributeType="String" minValueString="2" maxValueString="2" defaultValueString="en" regularExpressionString="[a-z]{2}">
+            <userInfo>
+                <entry key="docs" value="ISO 639-1: two letter code, lowercase"/>
+            </userInfo>
+        </attribute>
+        <attribute name="syncRevision" optional="YES" attributeType="Integer 64" defaultValueString="0" usesScalarValueType="YES"/>
+        <attribute name="text" attributeType="String" maxValueString="10000"/>
+        <attribute name="updatedAt" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="uuid" attributeType="UUID" usesScalarValueType="YES"/>
+        <relationship name="chapter" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="SNChapterTemplate" inverseName="titles" inverseEntity="SNChapterTemplate"/>
+    </entity>
+    <entity name="SNContentManager" representedClassName="SNContentManager" syncable="YES" codeGenerationType="class">
+        <attribute name="active" attributeType="Boolean" defaultValueString="YES" usesScalarValueType="YES"/>
+        <attribute name="contentLanguage" attributeType="String" minValueString="2" maxValueString="2" defaultValueString="en" regularExpressionString="[a-z]{2}">
+            <userInfo>
+                <entry key="docs" value="ISO 639-1: two letter code, lowercase. This is not the language of the interface, but the language of the content created."/>
+            </userInfo>
+        </attribute>
+        <attribute name="createdAt" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="isSuitableForPush" optional="YES" attributeType="Boolean" defaultValueString="NO" usesScalarValueType="YES"/>
+        <attribute name="syncRevision" optional="YES" attributeType="Integer 64" defaultValueString="0" usesScalarValueType="YES"/>
+        <attribute name="updatedAt" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="uuid" attributeType="UUID" usesScalarValueType="YES"/>
+        <relationship name="baseUser" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="SNUser" inverseName="contentManager" inverseEntity="SNUser"/>
+    </entity>
+    <entity name="SNCourse" representedClassName="SNCourse" syncable="YES" codeGenerationType="class">
+        <attribute name="active" attributeType="Boolean" defaultValueString="YES" usesScalarValueType="YES"/>
+        <attribute name="createdAt" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="isSuitableForPush" optional="YES" attributeType="Boolean" defaultValueString="NO" usesScalarValueType="YES"/>
+        <attribute name="pausedSince" optional="YES" attributeType="Date" usesScalarValueType="NO">
+            <userInfo>
+                <entry key="docs" value="Setting this to null means the course isn't paused"/>
+            </userInfo>
+        </attribute>
+        <attribute name="syncRevision" optional="YES" attributeType="Integer 64" defaultValueString="0" usesScalarValueType="YES"/>
+        <attribute name="updatedAt" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="uuid" attributeType="UUID" usesScalarValueType="YES"/>
+        <relationship name="baby" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="SNBaby" inverseName="course" inverseEntity="SNBaby"/>
+        <relationship name="chapters" optional="YES" toMany="YES" deletionRule="Nullify" destinationEntity="SNCourseChapter" inverseName="course" inverseEntity="SNCourseChapter"/>
+        <relationship name="pausePeriods" optional="YES" toMany="YES" deletionRule="Nullify" destinationEntity="SNPausePeriod" inverseName="course" inverseEntity="SNPausePeriod"/>
+        <relationship name="questionnaireAnswers" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="SNCourseQuestionnaireAnswers" inverseName="course" inverseEntity="SNCourseQuestionnaireAnswers"/>
+    </entity>
+    <entity name="SNCourseChapter" representedClassName="SNCourseChapter" syncable="YES" codeGenerationType="class">
+        <attribute name="active" attributeType="Boolean" defaultValueString="YES" usesScalarValueType="YES"/>
+        <attribute name="createdAt" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="isSuitableForPush" optional="YES" attributeType="Boolean" defaultValueString="NO" usesScalarValueType="YES"/>
+        <attribute name="orderingIndex" attributeType="Integer 16" defaultValueString="0" usesScalarValueType="YES"/>
+        <attribute name="syncRevision" optional="YES" attributeType="Integer 64" defaultValueString="0" usesScalarValueType="YES"/>
+        <attribute name="updatedAt" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="uuid" attributeType="UUID" usesScalarValueType="YES"/>
+        <relationship name="course" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="SNCourse" inverseName="chapters" inverseEntity="SNCourse"/>
+        <relationship name="template" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="SNChapterTemplate" inverseName="courseChapters" inverseEntity="SNChapterTemplate"/>
+    </entity>
+    <entity name="SNCourseGenerationConfig" representedClassName="SNCourseGenerationConfig" syncable="YES" codeGenerationType="class">
+        <attribute name="active" attributeType="Boolean" defaultValueString="YES" usesScalarValueType="YES"/>
+        <attribute name="createdAt" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="isIntroChapter" optional="YES" attributeType="Boolean" usesScalarValueType="YES">
+            <userInfo>
+                <entry key="docs" value="Config entries with this flag should be added to the course right after its created - before the questionnaire is completed"/>
+            </userInfo>
+        </attribute>
+        <attribute name="isSuitableForPush" optional="YES" attributeType="Boolean" defaultValueString="NO" usesScalarValueType="YES"/>
+        <attribute name="maxAgeInMonthsExclusive" optional="YES" attributeType="Integer 16" usesScalarValueType="YES"/>
+        <attribute name="minAgeInMonthsInclusive" optional="YES" attributeType="Integer 16" usesScalarValueType="YES"/>
+        <attribute name="orderingIndex" attributeType="Integer 16" defaultValueString="0" usesScalarValueType="YES"/>
+        <attribute name="questionnaireFieldName" optional="YES" attributeType="String" maxValueString="100">
+            <userInfo>
+                <entry key="docs" value="Should always be set together with questionnaireFieldValue"/>
+            </userInfo>
+        </attribute>
+        <attribute name="questionnaireFieldValue" optional="YES" attributeType="String" maxValueString="100">
+            <userInfo>
+                <entry key="docs" value="Should always be set together with questionnaireFieldName. Is interpreted in a different way depending on the type of the field:\n1. For multiple choice questions the condition is met when the option specified in this field is one of the selected options\n2. For boolean fields this field should be either &quot;true&quot; or &quot;false&quot;\n3. Fields of string type should exactly match the value specified in this field"/>
+            </userInfo>
+        </attribute>
+        <attribute name="syncRevision" optional="YES" attributeType="Integer 64" defaultValueString="0" usesScalarValueType="YES"/>
+        <attribute name="updatedAt" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="uuid" attributeType="UUID" usesScalarValueType="YES"/>
+        <relationship name="blocksChapterTemplates" optional="YES" toMany="YES" deletionRule="Nullify" destinationEntity="SNChapterTemplate" inverseName="blockedByTemplates" inverseEntity="SNChapterTemplate">
+            <userInfo>
+                <entry key="docs" value="These values should be interpreted after configs matching baby's age and questionnaire answers are selected. After this pass, for all rules chapterTemplates of which are not blocked, the rules containing their blockedChapters should be removed."/>
+            </userInfo>
+        </relationship>
+        <relationship name="chapterTemplate" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="SNChapterTemplate" inverseName="generationConfigs" inverseEntity="SNChapterTemplate"/>
+        <userInfo>
+            <entry key="docs" value="Entries used to determine what chapters should be included in user's course. They should be first considered when creating course - the entries with `isIntroChapter` should be immediately attached. Next, they should be considered when the SNCourseQuestionnaireAnswers objects are created."/>
+        </userInfo>
+    </entity>
+    <entity name="SNCourseQuestionnaireAnswers" representedClassName="SNCourseQuestionnaireAnswers" syncable="YES" codeGenerationType="class">
+        <attribute name="active" attributeType="Boolean" defaultValueString="YES" usesScalarValueType="YES"/>
+        <attribute name="attitudeTowardsCrying" optional="YES" attributeType="String" regularExpressionString="(PrioritizeFastResults|MinimizeCrying|NoCrying|NoSleepTraining)"/>
+        <attribute name="babyDescription" attributeType="String" regularExpressionString="(Energetic|Calm|Grumpy|Anxious|HardToTell)"/>
+        <attribute name="bedtimeMood" attributeType="String" regularExpressionString="(Happy|Grumpy|Differs)"/>
+        <attribute name="carers" attributeType="String" regularExpressionString="^(Mother|Father|Nanny)(,(Mother|Father|Nanny))*$">
+            <userInfo>
+                <entry key="docs" value="Multiple choice question; values should be separated by &quot;, &quot;"/>
+            </userInfo>
+        </attribute>
+        <attribute name="createdAt" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="isSuitableForPush" optional="YES" attributeType="Boolean" defaultValueString="NO" usesScalarValueType="YES"/>
+        <attribute name="mainGoal" attributeType="String" regularExpressionString="(LessNightWakeups|HelpDifferentiateDayFromNight|LongerNaps|LaterWakeups|EasierPuttingToSleep|OwnBedTransition)"/>
+        <attribute name="napCircumstances" attributeType="String" regularExpressionString="^(ByBreast|ByBottle|InStroller|Rocked|Cosleeping|InCar|InBabySwingOrYoke|InBedAssisted|InBedAlone)(,(ByBreast|ByBottle|InStroller|Rocked|Cosleeping|InCar|InBabySwingOrYoke|InBedAssisted|InBedAlone))*$">
+            <userInfo>
+                <entry key="docs" value="Multiple choice question; values should be separated by &quot;, &quot;"/>
+            </userInfo>
+        </attribute>
+        <attribute name="nightFeedingsCount" attributeType="Integer 16" defaultValueString="0" usesScalarValueType="YES"/>
+        <attribute name="nightSleepCircumstances" attributeType="String" regularExpressionString="^(ByBreast|ByBottle|InStroller|Rocked|Cosleeping|InCar|InBabySwingOrYoke|InBedAssisted|InBedAlone)(,(ByBreast|ByBottle|InStroller|Rocked|Cosleeping|InCar|InBabySwingOrYoke|InBedAssisted|InBedAlone))*$">
+            <userInfo>
+                <entry key="docs" value="Multiple choice question; values should be separated by &quot;, &quot;"/>
+            </userInfo>
+        </attribute>
+        <attribute name="nightSleepLocation" attributeType="String" regularExpressionString="(Crib|ParentsBed|OwnBed|StrollerOrCarrier|ParentsArms)"/>
+        <attribute name="nightWakeupsCount" attributeType="Integer 16" defaultValueString="0" usesScalarValueType="YES"/>
+        <attribute name="otherParentInvolvement" optional="YES" attributeType="Boolean" usesScalarValueType="YES"/>
+        <attribute name="ownBedTransition" optional="YES" attributeType="Boolean" usesScalarValueType="YES"/>
+        <attribute name="ownRoom" attributeType="Boolean" usesScalarValueType="YES"/>
+        <attribute name="ownRoomTransition" optional="YES" attributeType="Boolean" usesScalarValueType="YES"/>
+        <attribute name="pacifier" attributeType="Boolean" usesScalarValueType="YES"/>
+        <attribute name="ritual" attributeType="Boolean" usesScalarValueType="YES"/>
+        <attribute name="syncRevision" optional="YES" attributeType="Integer 64" defaultValueString="0" usesScalarValueType="YES"/>
+        <attribute name="updatedAt" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="uuid" attributeType="UUID" usesScalarValueType="YES"/>
+        <attribute name="wakeupMood" attributeType="String" regularExpressionString="(EnergeticButThenGrumpy|GrumpyButThenEnergetic|Energetic|Grumpy|Differs)"/>
+        <relationship name="course" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="SNCourse" inverseName="questionnaireAnswers" inverseEntity="SNCourse"/>
+    </entity>
+    <entity name="SNMission" representedClassName="SNMission" syncable="YES" codeGenerationType="class">
+        <attribute name="active" attributeType="Boolean" defaultValueString="YES" usesScalarValueType="YES"/>
+        <attribute name="createdAt" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="estimatedTimeInMinutesLowerBound" optional="YES" attributeType="Integer 16" defaultValueString="0" usesScalarValueType="YES">
+            <userInfo>
+                <entry key="docs" value="Used for displaying info on how long completing the mission will take on the frontend in a format of `${estimatedTimeInMinutesLowerBound} - ${estimatedTimeInMinutesUpperBound} min`"/>
+            </userInfo>
+        </attribute>
+        <attribute name="estimatedTimeInMinutesUpperBound" optional="YES" attributeType="Integer 16" defaultValueString="0" usesScalarValueType="YES">
+            <userInfo>
+                <entry key="docs" value="Used for displaying info on how long completing the mission will take on the frontend in a format of `${estimatedTimeInMinutesLowerBound} - ${estimatedTimeInMinutesUpperBound} min`"/>
+            </userInfo>
+        </attribute>
+        <attribute name="isSuitableForPush" optional="YES" attributeType="Boolean" defaultValueString="NO" usesScalarValueType="YES"/>
+        <attribute name="orderingIndex" attributeType="Integer 16" defaultValueString="0" usesScalarValueType="YES"/>
+        <attribute name="syncRevision" optional="YES" attributeType="Integer 64" defaultValueString="0" usesScalarValueType="YES"/>
+        <attribute name="updatedAt" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="uuid" attributeType="UUID" usesScalarValueType="YES"/>
+        <relationship name="chapter" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="SNChapterTemplate" inverseName="missions" inverseEntity="SNChapterTemplate"/>
+        <relationship name="completions" optional="YES" toMany="YES" deletionRule="Nullify" destinationEntity="SNMissionCompletion" inverseName="mission" inverseEntity="SNMissionCompletion"/>
+        <relationship name="contents" optional="YES" toMany="YES" deletionRule="Nullify" destinationEntity="SNMissionContent" inverseName="mission" inverseEntity="SNMissionContent"/>
+        <relationship name="frequentlyAskedQuestions" optional="YES" toMany="YES" deletionRule="Nullify" destinationEntity="SNMissionFaq" inverseName="mission" inverseEntity="SNMissionFaq"/>
+    </entity>
+    <entity name="SNMissionCompletion" representedClassName="SNMissionCompletion" syncable="YES" codeGenerationType="class">
+        <attribute name="active" attributeType="Boolean" defaultValueString="YES" usesScalarValueType="YES"/>
+        <attribute name="createdAt" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="date" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="isCompleted" attributeType="Boolean" usesScalarValueType="YES"/>
+        <attribute name="isSuitableForPush" optional="YES" attributeType="Boolean" defaultValueString="NO" usesScalarValueType="YES"/>
+        <attribute name="syncRevision" optional="YES" attributeType="Integer 64" defaultValueString="0" usesScalarValueType="YES"/>
+        <attribute name="updatedAt" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="uuid" attributeType="UUID" usesScalarValueType="YES"/>
+        <relationship name="additionalSleepData" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="SNAdditionalSleepData" inverseName="missionCompletion" inverseEntity="SNAdditionalSleepData"/>
+        <relationship name="baby" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="SNBaby" inverseName="missionCompletions" inverseEntity="SNBaby"/>
+        <relationship name="mission" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="SNMission" inverseName="completions" inverseEntity="SNMission"/>
+    </entity>
+    <entity name="SNMissionContent" representedClassName="SNMissionContent" syncable="YES" codeGenerationType="class">
+        <attribute name="active" attributeType="Boolean" defaultValueString="YES" usesScalarValueType="YES"/>
+        <attribute name="createdAt" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="isSuitableForPush" optional="YES" attributeType="Boolean" defaultValueString="NO" usesScalarValueType="YES"/>
+        <attribute name="language" attributeType="String" minValueString="2" maxValueString="2" regularExpressionString="[a-z]{2}">
+            <userInfo>
+                <entry key="docs" value="ISO 639-1: two letter code, lowercase"/>
+            </userInfo>
+        </attribute>
+        <attribute name="markdown" attributeType="String" maxValueString="20000"/>
+        <attribute name="syncRevision" optional="YES" attributeType="Integer 64" defaultValueString="0" usesScalarValueType="YES"/>
+        <attribute name="updatedAt" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="uuid" attributeType="UUID" usesScalarValueType="YES"/>
+        <relationship name="mission" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="SNMission" inverseName="contents" inverseEntity="SNMission"/>
+    </entity>
+    <entity name="SNMissionFaq" representedClassName="SNMissionFaq" syncable="YES" codeGenerationType="class">
+        <attribute name="active" attributeType="Boolean" defaultValueString="YES" usesScalarValueType="YES"/>
+        <attribute name="answer" attributeType="String" maxValueString="20000"/>
+        <attribute name="createdAt" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="isSuitableForPush" optional="YES" attributeType="Boolean" defaultValueString="NO" usesScalarValueType="YES"/>
+        <attribute name="language" attributeType="String" minValueString="2" maxValueString="2" regularExpressionString="[a-z]{2}">
+            <userInfo>
+                <entry key="docs" value="ISO 639-1: two letter code, lowercase"/>
+            </userInfo>
+        </attribute>
+        <attribute name="orderingIndex" attributeType="Integer 16" defaultValueString="0" usesScalarValueType="YES"/>
+        <attribute name="question" attributeType="String" maxValueString="10000"/>
+        <attribute name="syncRevision" optional="YES" attributeType="Integer 64" defaultValueString="0" usesScalarValueType="YES"/>
+        <attribute name="updatedAt" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="uuid" attributeType="UUID" usesScalarValueType="YES"/>
+        <relationship name="mission" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="SNMission" inverseName="frequentlyAskedQuestions" inverseEntity="SNMission"/>
+    </entity>
+    <entity name="SNPausePeriod" representedClassName="SNPausePeriod" syncable="YES" codeGenerationType="class">
+        <attribute name="active" attributeType="Boolean" defaultValueString="YES" usesScalarValueType="YES"/>
+        <attribute name="createdAt" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="end" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="isSuitableForPush" optional="YES" attributeType="Boolean" defaultValueString="NO" usesScalarValueType="YES"/>
+        <attribute name="start" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="syncRevision" optional="YES" attributeType="Integer 64" defaultValueString="0" usesScalarValueType="YES"/>
+        <attribute name="updatedAt" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="uuid" attributeType="UUID" usesScalarValueType="YES"/>
+        <relationship name="course" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="SNCourse" inverseName="pausePeriods" inverseEntity="SNCourse"/>
+    </entity>
+    <entity name="SNPaymentInstrument" representedClassName="SNPaymentInstrument" syncable="YES" codeGenerationType="class">
+        <attribute name="active" attributeType="Boolean" defaultValueString="YES" usesScalarValueType="YES"/>
+        <attribute name="createdAt" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="isActive" attributeType="Boolean" defaultValueString="YES" usesScalarValueType="YES">
+            <userInfo>
+                <entry key="docs" value="Do not confuse with app/active! Here active should mean ,,the provider will accept payment with this instrument''."/>
+            </userInfo>
+        </attribute>
+        <attribute name="isSuitableForPush" optional="YES" attributeType="Boolean" defaultValueString="NO" usesScalarValueType="YES"/>
+        <attribute name="providerId" attributeType="String">
+            <userInfo>
+                <entry key="docs" value="ID of the instrument, created by the provider"/>
+            </userInfo>
+        </attribute>
+        <attribute name="providerPayload" optional="YES" attributeType="String"/>
+        <attribute name="providerType" attributeType="String" regularExpressionString="(imoje|appstore|googleplay)"/>
+        <attribute name="syncRevision" optional="YES" attributeType="Integer 64" defaultValueString="0" usesScalarValueType="YES"/>
+        <attribute name="updatedAt" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="uuid" attributeType="UUID" usesScalarValueType="YES"/>
+        <relationship name="currentlyUsedBySubscriptionState" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="SNSubscriptionState" inverseName="currentPaymentInstrument" inverseEntity="SNSubscriptionState"/>
+        <relationship name="subscriptionState" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="SNSubscriptionState" inverseName="paymentInstruments" inverseEntity="SNSubscriptionState"/>
+        <relationship name="transactions" optional="YES" toMany="YES" deletionRule="Nullify" destinationEntity="SNSubscriptionTransaction" inverseName="paidWithInstrument" inverseEntity="SNSubscriptionTransaction"/>
+    </entity>
+    <entity name="SNPaymentRefund" representedClassName="SNPrice" syncable="YES" codeGenerationType="class">
+        <attribute name="active" attributeType="Boolean" defaultValueString="YES" usesScalarValueType="YES"/>
+        <attribute name="amount" attributeType="Integer 64" minValueString="0" usesScalarValueType="YES"/>
+        <attribute name="createdAt" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="currency" attributeType="String" minValueString="3" maxValueString="3">
+            <userInfo>
+                <entry key="docs" value="ISO 4217: three letter code, uppercase"/>
+            </userInfo>
+        </attribute>
+        <attribute name="isSuitableForPush" optional="YES" attributeType="Boolean" defaultValueString="NO" usesScalarValueType="YES"/>
+        <attribute name="providerPayload" optional="YES" attributeType="String"/>
+        <attribute name="syncRevision" optional="YES" attributeType="Integer 64" defaultValueString="0" usesScalarValueType="YES"/>
+        <attribute name="updatedAt" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="uuid" attributeType="UUID" usesScalarValueType="YES"/>
+        <relationship name="transaction" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="SNSubscriptionTransaction" inverseName="refunds" inverseEntity="SNSubscriptionTransaction"/>
+    </entity>
+    <entity name="SNPredictionCohortAssignment" representedClassName="SNPredictionCohortAssignment" syncable="YES" codeGenerationType="class">
+        <attribute name="active" attributeType="Boolean" defaultValueString="YES" usesScalarValueType="YES"/>
+        <attribute name="branchId" attributeType="String"/>
+        <attribute name="createdAt" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="isSuitableForPush" optional="YES" attributeType="Boolean" defaultValueString="NO" usesScalarValueType="YES"/>
+        <attribute name="newlyAssigned" attributeType="Boolean" usesScalarValueType="YES">
+            <userInfo>
+                <entry key="docs" value="If true, use when child is not assigned to any cohort. If false, use to determine whether already assigned child should leave the cohort."/>
+            </userInfo>
+        </attribute>
+        <attribute name="percentage" attributeType="Integer 64" minValueString="0" usesScalarValueType="YES"/>
+        <attribute name="syncRevision" optional="YES" attributeType="Integer 64" defaultValueString="0" usesScalarValueType="YES"/>
+        <attribute name="updatedAt" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="uuid" attributeType="UUID" usesScalarValueType="YES"/>
+        <userInfo>
+            <entry key="docs" value="Weights used in decision tree when deciding on baby's cohort."/>
+        </userInfo>
+    </entity>
+    <entity name="SNPredictionCohortWeight" representedClassName="SNPredictionCohortWeight" syncable="YES" codeGenerationType="class">
+        <attribute name="active" attributeType="Boolean" defaultValueString="YES" usesScalarValueType="YES"/>
+        <attribute name="cohort" attributeType="Integer 64" optional="YES" minValueString="1" maxValueString="5" usesScalarValueType="YES">
+            <userInfo>
+                <entry key="docs" value="Deprecated, will be removed!"/>
+            </userInfo>
+        </attribute>
+        <attribute name="cohortName" attributeType="String" optional="YES" regularExpressionString="(AllOK|Sleepyhead|InvertedRhythm|NapsBadNightOK|AllBad)"/>
+        <attribute name="createdAt" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="firstActivityWindow" attributeType="Boolean" usesScalarValueType="YES">
+            <userInfo>
+                <entry key="docs" value="If true, apply to first activity window. Otherwise, apply to next activity windows or naps."/>
+            </userInfo>
+        </attribute>
+        <attribute name="group" attributeType="Integer 64" optional="YES" minValueString="1" maxValueString="2" usesScalarValueType="YES">
+            <userInfo>
+                <entry key="docs" value="Deprecated, will be removed!"/>
+            </userInfo>
+        </attribute>
+        <attribute name="groupName" attributeType="String" optional="YES" regularExpressionString="(group1|group2)">
+            <userInfo>
+                <entry key="docs" value="group0 not available: we are not making predictions for this group"/>
+            </userInfo>
+        </attribute>
+        <attribute name="isSuitableForPush" optional="YES" attributeType="Boolean" defaultValueString="NO" usesScalarValueType="YES"/>
+        <attribute name="syncRevision" optional="YES" attributeType="Integer 64" defaultValueString="0" usesScalarValueType="YES"/>
+        <attribute name="updatedAt" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="uuid" attributeType="UUID" usesScalarValueType="YES"/>
+        <attribute name="weight" attributeType="Integer 64" minValueString="0" maxValueString="100" usesScalarValueType="YES">
+            <userInfo>
+                <entry key="docs" value="Percentage"/>
+            </userInfo>
+        </attribute>
+        <attribute name="weightName" attributeType="String"/>
+        <userInfo>
+            <entry key="docs" value="For a baby assigned to a cohort, all weights used to compute recommended times of napping or night sleeping."/>
+        </userInfo>
+    </entity>
+    <entity name="SNPrice" representedClassName="SNPrice" syncable="YES" codeGenerationType="class">
+        <attribute name="active" attributeType="Boolean" defaultValueString="YES" usesScalarValueType="YES"/>
+        <attribute name="amount" attributeType="Integer 64" minValueString="0" usesScalarValueType="YES">
+            <userInfo>
+                <entry key="docs" value="Netto, add taxAmount to get total!"/>
+            </userInfo>
+        </attribute>
+        <attribute name="createdAt" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="currency" attributeType="String" minValueString="3" maxValueString="3">
+            <userInfo>
+                <entry key="docs" value="ISO 4217: three letter code, uppercase"/>
+            </userInfo>
+        </attribute>
+        <attribute name="isSuitableForPush" optional="YES" attributeType="Boolean" defaultValueString="NO" usesScalarValueType="YES"/>
+        <attribute name="syncRevision" optional="YES" attributeType="Integer 64" defaultValueString="0" usesScalarValueType="YES"/>
+        <attribute name="taxAmount" attributeType="Integer 64" minValueString="0" usesScalarValueType="YES"/>
+        <attribute name="taxPercentage" attributeType="Double" minValueString="0" usesScalarValueType="YES"/>
+        <attribute name="updatedAt" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="uuid" attributeType="UUID" usesScalarValueType="YES"/>
+        <relationship name="template" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="SNSubscriptionTemplate" inverseName="prices" inverseEntity="SNSubscriptionTemplate"/>
+    </entity>
+    <entity name="SNRecommendedSleepCorrections" representedClassName="SNRecommendedSleepCorrections" syncable="YES" codeGenerationType="class">
+        <attribute name="active" attributeType="Boolean" defaultValueString="YES" usesScalarValueType="YES"/>
+        <attribute name="computationName" attributeType="String"/>
+        <attribute name="createdAt" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="isSuitableForPush" optional="YES" attributeType="Boolean" defaultValueString="NO" usesScalarValueType="YES"/>
+        <attribute name="maximumMonths" optional="YES" attributeType="Integer 64" usesScalarValueType="YES">
+            <userInfo>
+                <entry key="docs" value="There should be maximumMonths &gt; minimumMonths"/>
+            </userInfo>
+        </attribute>
+        <attribute name="minimumMonths" optional="YES" attributeType="Integer 64" usesScalarValueType="YES">
+            <userInfo>
+                <entry key="docs" value="There should be maximumMonths &gt; minimumMonths"/>
+            </userInfo>
+        </attribute>
+        <attribute name="napsCount" optional="YES" attributeType="Integer 64" minValueString="0" usesScalarValueType="YES"/>
+        <attribute name="syncRevision" optional="YES" attributeType="Integer 64" defaultValueString="0" usesScalarValueType="YES"/>
+        <attribute name="updatedAt" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="uuid" attributeType="UUID" usesScalarValueType="YES"/>
+        <attribute name="value" attributeType="Integer 64" usesScalarValueType="YES">
+            <userInfo>
+                <entry key="docs" value="Unit dependent on variable name: percentage, minutes, 1/0 (true/false)"/>
+            </userInfo>
+        </attribute>
+        <attribute name="variableId" attributeType="String" minValueString="1">
+            <userInfo>
+                <entry key="docs" value="According to the spreadsheet, variables have cryptic names, such as x, y, z."/>
+            </userInfo>
+        </attribute>
+        <userInfo>
+            <entry key="docs" value="Table 1.2: corrections"/>
+        </userInfo>
+    </entity>
+    <entity name="SNRecommendedSleepLength" representedClassName="SNRecommendedSleepLength" syncable="YES" codeGenerationType="class">
+        <attribute name="active" attributeType="Boolean" defaultValueString="YES" usesScalarValueType="YES"/>
+        <attribute name="createdAt" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="isSuitableForPush" optional="YES" attributeType="Boolean" defaultValueString="NO" usesScalarValueType="YES"/>
+        <attribute name="maximumMonths" optional="YES" attributeType="Integer 64" usesScalarValueType="YES">
+            <userInfo>
+                <entry key="docs" value="There should be maximumMonths &gt; minimumMonths"/>
+            </userInfo>
+        </attribute>
+        <attribute name="minimumMonths" optional="YES" attributeType="Integer 64" usesScalarValueType="YES">
+            <userInfo>
+                <entry key="docs" value="There should be maximumMonths &gt; minimumMonths"/>
+            </userInfo>
+        </attribute>
+        <attribute name="napsCount" optional="YES" attributeType="Integer 64" minValueString="0" usesScalarValueType="YES"/>
+        <attribute name="syncRevision" optional="YES" attributeType="Integer 64" defaultValueString="0" usesScalarValueType="YES"/>
+        <attribute name="updatedAt" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="uuid" attributeType="UUID" usesScalarValueType="YES"/>
+        <attribute name="value" attributeType="Integer 64" usesScalarValueType="YES">
+            <userInfo>
+                <entry key="docs" value="Unit dependent on variable name: amount (of naps), minutes, or minutes past midnight."/>
+            </userInfo>
+        </attribute>
+        <attribute name="variableIndex" optional="YES" attributeType="Integer 64" minValueString="1" usesScalarValueType="YES">
+            <userInfo>
+                <entry key="docs" value="Might be used to define nth activity period or nth nap, in this case this index is n"/>
+            </userInfo>
+        </attribute>
+        <attribute name="variableName" attributeType="String"/>
+        <attribute name="variableSubName" optional="YES" attributeType="String"/>
+        <userInfo>
+            <entry key="docs" value="Table 1.1: age-based recommendations, full variable name is variableName + variableSubName + variableIndex"/>
+        </userInfo>
+    </entity>
+    <entity name="SNSectionContent" representedClassName="SNSectionContent" syncable="YES" codeGenerationType="class">
+        <attribute name="active" attributeType="Boolean" defaultValueString="YES" usesScalarValueType="YES"/>
+        <attribute name="createdAt" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="isSuitableForPush" optional="YES" attributeType="Boolean" defaultValueString="NO" usesScalarValueType="YES"/>
+        <attribute name="language" attributeType="String" minValueString="2" maxValueString="2" defaultValueString="en" regularExpressionString="[a-z]{2}">
+            <userInfo>
+                <entry key="docs" value="ISO 639-1: two letter code, lowercase"/>
+            </userInfo>
+        </attribute>
+        <attribute name="media" optional="YES" attributeType="URI">
+            <userInfo>
+                <entry key="docs" value="Used for sections of type &quot;image&quot; and &quot;video&quot;"/>
+            </userInfo>
+        </attribute>
+        <attribute name="mediaHeight" optional="YES" attributeType="Integer 16" defaultValueString="0" usesScalarValueType="YES">
+            <userInfo>
+                <entry key="docs" value="Used together with mediaWidth for sections of type &quot;image&quot; and &quot;video&quot;"/>
+            </userInfo>
+        </attribute>
+        <attribute name="mediaThumb" optional="YES" attributeType="URI">
+            <userInfo>
+                <entry key="docs" value="Optional thumbnail for sections of type &quot;video&quot;"/>
+            </userInfo>
+        </attribute>
+        <attribute name="mediaWidth" optional="YES" attributeType="Integer 16" defaultValueString="0" usesScalarValueType="YES">
+            <userInfo>
+                <entry key="docs" value="Used together with mediaHeight for sections of type &quot;image&quot; and &quot;video&quot;"/>
+            </userInfo>
+        </attribute>
+        <attribute name="syncRevision" optional="YES" attributeType="Integer 64" defaultValueString="0" usesScalarValueType="YES"/>
+        <attribute name="text" optional="YES" attributeType="String" maxValueString="20000">
+            <userInfo>
+                <entry key="docs" value="Mandatory for sections of type &quot;markdown&quot;, &quot;quote&quot; and &quot;header&quot;. Used for displaying optional caption for sections of type &quot;image&quot; and &quot;video&quot;."/>
+            </userInfo>
+        </attribute>
+        <attribute name="updatedAt" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="uuid" attributeType="UUID" usesScalarValueType="YES"/>
+        <relationship name="section" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="SNSlideSection" inverseName="contents" inverseEntity="SNSlideSection"/>
+    </entity>
+    <entity name="SNSleepJournalEntry" representedClassName="SNSleepJournalEntry" syncable="YES" codeGenerationType="class">
+        <attribute name="active" attributeType="Boolean" defaultValueString="YES" usesScalarValueType="YES"/>
+        <attribute name="createdAt" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="endDate" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="isSuitableForPush" optional="YES" attributeType="Boolean" defaultValueString="NO" usesScalarValueType="YES"/>
+        <attribute name="startDate" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="syncRevision" optional="YES" attributeType="Integer 64" defaultValueString="0" usesScalarValueType="YES"/>
+        <attribute name="updatedAt" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="uuid" attributeType="UUID" usesScalarValueType="YES"/>
+        <relationship name="additionalData" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="SNAdditionalSleepData" inverseName="sleepJournalEntry" inverseEntity="SNAdditionalSleepData"/>
+        <relationship name="baby" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="SNBaby" inverseName="sleepJournalEntries" inverseEntity="SNBaby"/>
+        <userInfo>
+            <entry key="docs" value="This entity records only historical sleeps."/>
+        </userInfo>
+    </entity>
+    <entity name="SNSleepPrediction" representedClassName="SNSleepPrediction" syncable="YES" codeGenerationType="class">
+        <attribute name="active" attributeType="Boolean" defaultValueString="YES" usesScalarValueType="YES"/>
+        <attribute name="createdAt" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="expectedEndDate" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="expectedStartDate" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="isSuitableForPush" optional="YES" attributeType="Boolean" defaultValueString="NO" usesScalarValueType="YES"/>
+        <attribute name="sleepType" attributeType="String" minValueString="1" regularExpressionString="(Nap|Sleep)"/>
+        <attribute name="syncRevision" optional="YES" attributeType="Integer 64" defaultValueString="0" usesScalarValueType="YES"/>
+        <attribute name="updatedAt" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="uuid" attributeType="UUID" usesScalarValueType="YES"/>
+        <relationship name="baby" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="SNBaby" inverseName="sleepPredictions" inverseEntity="SNBaby"/>
+    </entity>
+    <entity name="SNSlideSection" representedClassName="SNSlideSection" syncable="YES" codeGenerationType="class">
+        <attribute name="active" attributeType="Boolean" defaultValueString="YES" usesScalarValueType="YES"/>
+        <attribute name="bulletPointType" attributeType="String" defaultValueString="default" regularExpressionString="(default|yellowStar|whiteStar|moon|rocket|lightning|do|dont)">
+            <userInfo>
+                <entry key="docs" value="Used for selecting one of predefined icons that can be used for bullet points of unordered lists"/>
+            </userInfo>
+        </attribute>
+        <attribute name="createdAt" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="enumerationType" attributeType="String" defaultValueString="numerical" regularExpressionString="(numerical|alphabetical)">
+            <userInfo>
+                <entry key="docs" value="Type of enumeration used for ordered lists: numerical (1., 2., 3., ...) or alphabetical (A., B., C., ...)"/>
+            </userInfo>
+        </attribute>
+        <attribute name="icon" optional="YES" attributeType="URI"/>
+        <attribute name="isSuitableForPush" optional="YES" attributeType="Boolean" defaultValueString="NO" usesScalarValueType="YES"/>
+        <attribute name="orderingIndex" attributeType="Integer 16" defaultValueString="0" usesScalarValueType="YES"/>
+        <attribute name="syncRevision" optional="YES" attributeType="Integer 64" defaultValueString="0" usesScalarValueType="YES"/>
+        <attribute name="textAlign" optional="YES" attributeType="String" defaultValueString="left" regularExpressionString="(left|right|center|justify)"/>
+        <attribute name="type" attributeType="String" regularExpressionString="(markdown|header|image|video|quote)"/>
+        <attribute name="updatedAt" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="uuid" attributeType="UUID" usesScalarValueType="YES"/>
+        <relationship name="contents" optional="YES" toMany="YES" deletionRule="Nullify" destinationEntity="SNSectionContent" inverseName="section" inverseEntity="SNSectionContent"/>
+        <relationship name="slide" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="SNTheorySlide" inverseName="sections" inverseEntity="SNTheorySlide"/>
+    </entity>
+    <entity name="SNSubchapterCheckbox" representedClassName="SNSubchapterCheckbox" syncable="YES" codeGenerationType="class">
+        <attribute name="active" attributeType="Boolean" defaultValueString="YES" usesScalarValueType="YES"/>
+        <attribute name="createdAt" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="isSuitableForPush" optional="YES" attributeType="Boolean" defaultValueString="NO" usesScalarValueType="YES"/>
+        <attribute name="language" attributeType="String" minValueString="2" maxValueString="2" defaultValueString="en" regularExpressionString="[a-z]{2}">
+            <userInfo>
+                <entry key="docs" value="ISO 639-1: two letter code, lowercase"/>
+            </userInfo>
+        </attribute>
+        <attribute name="orderingIndex" attributeType="Integer 16" defaultValueString="0" usesScalarValueType="YES"/>
+        <attribute name="syncRevision" optional="YES" attributeType="Integer 64" defaultValueString="0" usesScalarValueType="YES"/>
+        <attribute name="text" attributeType="String" maxValueString="10000"/>
+        <attribute name="updatedAt" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="uuid" attributeType="UUID" usesScalarValueType="YES"/>
+        <relationship name="subchapter" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="SNTheorySubchapter" inverseName="checkboxes" inverseEntity="SNTheorySubchapter"/>
+    </entity>
+    <entity name="SNSubchapterTitle" representedClassName="SNSubchapterTitle" syncable="YES" codeGenerationType="class">
+        <attribute name="active" attributeType="Boolean" defaultValueString="YES" usesScalarValueType="YES"/>
+        <attribute name="createdAt" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="isSuitableForPush" optional="YES" attributeType="Boolean" defaultValueString="NO" usesScalarValueType="YES"/>
+        <attribute name="language" attributeType="String" minValueString="2" maxValueString="2" defaultValueString="en" regularExpressionString="[a-z]{2}">
+            <userInfo>
+                <entry key="docs" value="ISO 639-1: two letter code, lowercase"/>
+            </userInfo>
+        </attribute>
+        <attribute name="syncRevision" optional="YES" attributeType="Integer 64" defaultValueString="0" usesScalarValueType="YES"/>
+        <attribute name="text" attributeType="String" maxValueString="10000"/>
+        <attribute name="updatedAt" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="uuid" attributeType="UUID" usesScalarValueType="YES"/>
+        <relationship name="subchapter" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="SNTheorySubchapter" inverseName="titles" inverseEntity="SNTheorySubchapter"/>
+    </entity>
+    <entity name="SNSubscriptionOrder" representedClassName="SNSubscriptionOrder" syncable="YES" codeGenerationType="class">
+        <attribute name="active" attributeType="Boolean" defaultValueString="YES" usesScalarValueType="YES"/>
+        <attribute name="createdAt" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="expectedAmount" attributeType="Integer 64" minValueString="0" usesScalarValueType="YES">
+            <userInfo>
+                <entry key="docs" value="Brutto"/>
+            </userInfo>
+        </attribute>
+        <attribute name="expectedCurrency" attributeType="String" minValueString="3" maxValueString="3">
+            <userInfo>
+                <entry key="docs" value="ISO 4217: three letter code, uppercase"/>
+            </userInfo>
+        </attribute>
+        <attribute name="invoiceCity" optional="YES" attributeType="String" minValueString="1" maxValueString="2000"/>
+        <attribute name="invoiceCompanyName" optional="YES" attributeType="String" minValueString="1" maxValueString="2000"/>
+        <attribute name="invoiceCompanyNumber" optional="YES" attributeType="String" minValueString="1" maxValueString="2000"/>
+        <attribute name="invoiceEmail" optional="YES" attributeType="String" minValueString="1" maxValueString="2000"/>
+        <attribute name="invoicePostalCode" optional="YES" attributeType="String" minValueString="1" maxValueString="2000"/>
+        <attribute name="invoiceStreet" optional="YES" attributeType="String" minValueString="1" maxValueString="2000"/>
+        <attribute name="isSuitableForPush" optional="YES" attributeType="Boolean" defaultValueString="NO" usesScalarValueType="YES"/>
+        <attribute name="productEndDate" attributeType="Date" usesScalarValueType="YES"/>
+        <attribute name="productStartDate" attributeType="Date" usesScalarValueType="YES"/>
+        <attribute name="providerType" attributeType="String" regularExpressionString="(imoje|appstore|googleplay)"/>
+        <attribute name="status" optional="YES" attributeType="String">
+            <userInfo>
+                <entry key="docs" value="Possible values depend on provider"/>
+            </userInfo>
+        </attribute>
+        <attribute name="syncRevision" optional="YES" attributeType="Integer 64" defaultValueString="0" usesScalarValueType="YES"/>
+        <attribute name="transactionId" optional="YES" attributeType="String"/>
+        <attribute name="updatedAt" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="uuid" attributeType="UUID" usesScalarValueType="YES"/>
+        <attribute name="widgetPayment" attributeType="Boolean" defaultValueString="NO" usesScalarValueType="YES"/>
+        <relationship name="createdBySubscriptionState" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="SNSubscriptionState" inverseName="allOrders" inverseEntity="SNSubscriptionState"/>
+        <relationship name="crossgradedFrom" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="SNSubscriptionOrder" inverseName="crossgradedTo" inverseEntity="SNSubscriptionOrder"/>
+        <relationship name="crossgradedTo" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="SNSubscriptionOrder" inverseName="crossgradedFrom" inverseEntity="SNSubscriptionOrder"/>
+        <relationship name="currentForSubscriptionState" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="SNSubscriptionState" inverseName="currentOrder" inverseEntity="SNSubscriptionState"/>
+        <relationship name="instrumentCreationOrderForSubscriptionState" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="SNSubscriptionState" inverseName="instrumentCreationOrders" inverseEntity="SNSubscriptionState"/>
+        <relationship name="pendingForSubscriptionState" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="SNSubscriptionState" inverseName="pendingOrders" inverseEntity="SNSubscriptionState"/>
+        <relationship name="template" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="SNSubscriptionTemplate" inverseName="orders" inverseEntity="SNSubscriptionTemplate"/>
+        <relationship name="transaction" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="SNSubscriptionTransaction" inverseName="subscriptionOrder" inverseEntity="SNSubscriptionTransaction"/>
+    </entity>
+    <entity name="SNSubscriptionState" representedClassName="SNSubscriptionState" syncable="YES" codeGenerationType="class">
+        <attribute name="active" attributeType="Boolean" defaultValueString="YES" usesScalarValueType="YES"/>
+        <attribute name="createdAt" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="email" attributeType="String" minValueString="1" maxValueString="2000" regularExpressionString="\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b"/>
+        <attribute name="firstName" attributeType="String" minValueString="1" maxValueString="2000"/>
+        <attribute name="invoiceCity" optional="YES" attributeType="String" minValueString="1" maxValueString="2000"/>
+        <attribute name="invoiceCompanyName" optional="YES" attributeType="String" minValueString="1" maxValueString="2000"/>
+        <attribute name="invoiceCompanyNumber" optional="YES" attributeType="String" minValueString="1" maxValueString="2000"/>
+        <attribute name="invoiceEmail" optional="YES" attributeType="String" minValueString="1" maxValueString="2000"/>
+        <attribute name="invoicePostalCode" optional="YES" attributeType="String" minValueString="1" maxValueString="2000"/>
+        <attribute name="invoiceStreet" optional="YES" attributeType="String" minValueString="1" maxValueString="2000"/>
+        <attribute name="isSuitableForPush" optional="YES" attributeType="Boolean" defaultValueString="NO" usesScalarValueType="YES"/>
+        <attribute name="lastName" attributeType="String" minValueString="1" maxValueString="2000"/>
+        <attribute name="subscriptionState" attributeType="String" regularExpressionString="(ACTIVE|CANCELLED|INACTIVE)"/>
+        <attribute name="syncRevision" optional="YES" attributeType="Integer 64" defaultValueString="0" usesScalarValueType="YES"/>
+        <attribute name="updatedAt" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="uuid" attributeType="UUID" usesScalarValueType="YES"/>
+        <relationship name="allOrders" optional="YES" toMany="YES" deletionRule="Nullify" destinationEntity="SNSubscriptionOrder" inverseName="createdBySubscriptionState" inverseEntity="SNSubscriptionOrder"/>
+        <relationship name="currentOrder" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="SNSubscriptionOrder" inverseName="currentForSubscriptionState" inverseEntity="SNSubscriptionOrder"/>
+        <relationship name="currentPaymentInstrument" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="SNPaymentInstrument" inverseName="currentlyUsedBySubscriptionState" inverseEntity="SNPaymentInstrument"/>
+        <relationship name="instrumentCreationOrders" optional="YES" toMany="YES" deletionRule="Nullify" destinationEntity="SNSubscriptionOrder" inverseName="instrumentCreationOrderForSubscriptionState" inverseEntity="SNSubscriptionOrder"/>
+        <relationship name="paymentInstruments" optional="YES" toMany="YES" deletionRule="Nullify" destinationEntity="SNPaymentInstrument" inverseName="subscriptionState" inverseEntity="SNPaymentInstrument"/>
+        <relationship name="pendingOrders" optional="YES" toMany="YES" deletionRule="Nullify" destinationEntity="SNSubscriptionOrder" inverseName="pendingForSubscriptionState" inverseEntity="SNSubscriptionOrder"/>
+        <relationship name="templateToBuy" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="SNSubscriptionTemplate" inverseName="toBeBoughtBySubscriptionStates" inverseEntity="SNSubscriptionTemplate"/>
+        <relationship name="user" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="SNUser" inverseName="subscriptionState" inverseEntity="SNUser"/>
+    </entity>
+    <entity name="SNSubscriptionTemplate" representedClassName="SNSubscriptionTemplate" syncable="YES" codeGenerationType="class">
+        <attribute name="active" attributeType="Boolean" defaultValueString="YES" usesScalarValueType="YES"/>
+        <attribute name="buyable" attributeType="Boolean" defaultValueString="NO" usesScalarValueType="YES">
+            <userInfo>
+                <entry key="docs" value="Buyable = true means that the subscription can be selected to be bought. If buyable = false, subscription can be bought by users who have already selected it. Migrate them to new subscription if you want to prevent them from buying this subscription."/>
+            </userInfo>
+        </attribute>
+        <attribute name="createdAt" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="instrumentCreation" attributeType="Boolean" defaultValueString="NO" usesScalarValueType="YES">
+            <userInfo>
+                <entry key="docs" value="There should be at most one template per provider with this flag set to true."/>
+            </userInfo>
+        </attribute>
+        <attribute name="isSuitableForPush" optional="YES" attributeType="Boolean" defaultValueString="NO" usesScalarValueType="YES"/>
+        <attribute name="lengthAmount" attributeType="Integer 64" minValueString="1" usesScalarValueType="YES"/>
+        <attribute name="lengthUnit" attributeType="String" minValueString="1" maxValueString="2000">
+            <userInfo>
+                <entry key="docs" value="Always plural: years, months, weeks, ..."/>
+            </userInfo>
+        </attribute>
+        <attribute name="name" attributeType="String" minValueString="1" maxValueString="2000"/>
+        <attribute name="oneTime" attributeType="Boolean" defaultValueString="NO" usesScalarValueType="YES">
+            <userInfo>
+                <entry key="docs" value="If true, subscription can't be bought more than once (eg. trial)."/>
+            </userInfo>
+        </attribute>
+        <attribute name="payload" attributeType="String" minValueString="1" maxValueString="2000" defaultValueString="{}">
+            <userInfo>
+                <entry key="docs" value="Deprecated, will be removed! JSON encoded additional properties of template, not expressed in schema."/>
+            </userInfo>
+        </attribute>
+        <attribute name="predefined" attributeType="Boolean" defaultValueString="NO" usesScalarValueType="YES"/>
+        <attribute name="providerType" attributeType="String" regularExpressionString="(imoje|appstore|googleplay)"/>
+        <attribute name="providerId" optional="YES" attributeType="String"/>
+        <attribute name="providerOfferId" optional="YES" attributeType="String"/>
+        <attribute name="syncRevision" optional="YES" attributeType="Integer 64" defaultValueString="0" usesScalarValueType="YES"/>
+        <attribute name="tier" attributeType="Integer 64" usesScalarValueType="YES">
+            <userInfo>
+                <entry key="docs" value="Tier 1 is the best subscription tier, tier 2 is lower tier, etc."/>
+            </userInfo>
+        </attribute>
+        <attribute name="updatedAt" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="uuid" attributeType="UUID" usesScalarValueType="YES"/>
+        <relationship name="orders" optional="YES" toMany="YES" deletionRule="Nullify" destinationEntity="SNSubscriptionOrder" inverseName="template" inverseEntity="SNSubscriptionOrder"/>
+        <relationship name="prices" optional="YES" toMany="YES" deletionRule="Nullify" destinationEntity="SNPrice" inverseName="template" inverseEntity="SNPrice"/>
+        <relationship name="toBeBoughtBySubscriptionStates" optional="YES" toMany="YES" deletionRule="Nullify" destinationEntity="SNSubscriptionState" inverseName="templateToBuy" inverseEntity="SNSubscriptionState"/>
+    </entity>
+    <entity name="SNSubscriptionTransaction" representedClassName="SNSubscriptionTransaction" syncable="YES" codeGenerationType="class">
+        <attribute name="active" attributeType="Boolean" defaultValueString="YES" usesScalarValueType="YES"/>
+        <attribute name="amount" attributeType="Integer 64" minValueString="0" usesScalarValueType="YES"/>
+        <attribute name="createdAt" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="currency" attributeType="String" minValueString="3" maxValueString="3">
+            <userInfo>
+                <entry key="docs" value="ISO 4217: three letter code, uppercase"/>
+            </userInfo>
+        </attribute>
+        <attribute name="isSuitableForPush" optional="YES" attributeType="Boolean" defaultValueString="NO" usesScalarValueType="YES"/>
+        <attribute name="providerPayload" optional="YES" attributeType="String" defaultValueString="{}"/>
+        <attribute name="providerType" attributeType="String" regularExpressionString="(imoje|appstore|googleplay)"/>
+        <attribute name="status" optional="YES" attributeType="String">
+            <userInfo>
+                <entry key="docs" value="Possible values depend on provider"/>
+            </userInfo>
+        </attribute>
+        <attribute name="syncRevision" optional="YES" attributeType="Integer 64" defaultValueString="0" usesScalarValueType="YES"/>
+        <attribute name="transactionId" attributeType="String"/>
+        <attribute name="updatedAt" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="uuid" attributeType="UUID" usesScalarValueType="YES"/>
+        <relationship name="paidWithInstrument" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="SNPaymentInstrument" inverseName="transactions" inverseEntity="SNPaymentInstrument"/>
+        <relationship name="refunds" optional="YES" toMany="YES" deletionRule="Nullify" destinationEntity="SNPaymentRefund" inverseName="transaction" inverseEntity="SNPaymentRefund"/>
+        <relationship name="subscriptionOrder" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="SNSubscriptionOrder" inverseName="transaction" inverseEntity="SNSubscriptionOrder"/>
+    </entity>
+    <entity name="SNTheorySlide" representedClassName="SNTheorySlide" syncable="YES" codeGenerationType="class">
+        <attribute name="active" attributeType="Boolean" defaultValueString="YES" usesScalarValueType="YES"/>
+        <attribute name="createdAt" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="isSuitableForPush" optional="YES" attributeType="Boolean" defaultValueString="NO" usesScalarValueType="YES"/>
+        <attribute name="orderingIndex" attributeType="Integer 16" defaultValueString="0" usesScalarValueType="YES"/>
+        <attribute name="syncRevision" optional="YES" attributeType="Integer 64" defaultValueString="0" usesScalarValueType="YES"/>
+        <attribute name="updatedAt" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="uuid" attributeType="UUID" usesScalarValueType="YES"/>
+        <relationship name="readBy" optional="YES" toMany="YES" deletionRule="Nullify" destinationEntity="SNUser" inverseName="readSlides" inverseEntity="SNUser"/>
+        <relationship name="sections" optional="YES" toMany="YES" deletionRule="Nullify" destinationEntity="SNSlideSection" inverseName="slide" inverseEntity="SNSlideSection"/>
+        <relationship name="subchapter" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="SNTheorySubchapter" inverseName="slides" inverseEntity="SNTheorySubchapter"/>
+    </entity>
+    <entity name="SNTheorySubchapter" representedClassName="SNTheorySubchapter" syncable="YES" codeGenerationType="class">
+        <attribute name="active" attributeType="Boolean" defaultValueString="YES" usesScalarValueType="YES"/>
+        <attribute name="createdAt" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="estimatedTimeInMinutesLowerBound" optional="YES" attributeType="Integer 16" defaultValueString="0" usesScalarValueType="YES">
+            <userInfo>
+                <entry key="docs" value="Used for displaying info on how long reading the subchapter will take on the frontend in a format of `${estimatedTimeInMinutesLowerBound} - ${estimatedTimeInMinutesUpperBound} min`"/>
+            </userInfo>
+        </attribute>
+        <attribute name="estimatedTimeInMinutesUpperBound" optional="YES" attributeType="Integer 16" defaultValueString="0" usesScalarValueType="YES">
+            <userInfo>
+                <entry key="docs" value="Used for displaying info on how long reading the subchapter will take on the frontend in a format of `${estimatedTimeInMinutesLowerBound} - ${estimatedTimeInMinutesUpperBound} min`"/>
+            </userInfo>
+        </attribute>
+        <attribute name="isSuitableForPush" optional="YES" attributeType="Boolean" defaultValueString="NO" usesScalarValueType="YES"/>
+        <attribute name="orderingIndex" attributeType="Integer 16" defaultValueString="0" usesScalarValueType="YES"/>
+        <attribute name="syncRevision" optional="YES" attributeType="Integer 64" defaultValueString="0" usesScalarValueType="YES"/>
+        <attribute name="updatedAt" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="uuid" attributeType="UUID" usesScalarValueType="YES"/>
+        <relationship name="chapter" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="SNChapterTemplate" inverseName="theorySubchapters" inverseEntity="SNChapterTemplate"/>
+        <relationship name="checkboxes" optional="YES" toMany="YES" deletionRule="Nullify" destinationEntity="SNSubchapterCheckbox" inverseName="subchapter" inverseEntity="SNSubchapterCheckbox">
+            <userInfo>
+                <entry key="docs" value="If any are added, an additional slide with the checkboxes will be shown at the end of this subchapter"/>
+            </userInfo>
+        </relationship>
+        <relationship name="readBy" optional="YES" toMany="YES" deletionRule="Nullify" destinationEntity="SNUser" inverseName="readSubchapters" inverseEntity="SNUser"/>
+        <relationship name="slides" optional="YES" toMany="YES" deletionRule="Nullify" destinationEntity="SNTheorySlide" inverseName="subchapter" inverseEntity="SNTheorySlide"/>
+        <relationship name="titles" optional="YES" toMany="YES" deletionRule="Nullify" destinationEntity="SNSubchapterTitle" inverseName="subchapter" inverseEntity="SNSubchapterTitle"/>
+    </entity>
+    <entity name="SNUser" representedClassName="SNUser" syncable="YES">
+        <attribute name="active" attributeType="Boolean" defaultValueString="YES" usesScalarValueType="YES"/>
+        <attribute name="createdAt" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="email" attributeType="String" minValueString="1" maxValueString="2000" regularExpressionString="\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b"/>
+        <attribute name="firstName" attributeType="String" minValueString="1"/>
+        <attribute name="fullName" optional="YES" attributeType="String" minValueString="1">
+            <userInfo>
+                <entry key="docs" value="Deprecated, use firstName and lastName."/>
+            </userInfo>
+        </attribute>
+        <attribute name="internalUserId" attributeType="UUID" usesScalarValueType="NO"/>
+        <attribute name="isSuitableForPush" optional="YES" attributeType="Boolean" defaultValueString="NO" usesScalarValueType="YES"/>
+        <attribute name="lastName" attributeType="String" minValueString="1"/>
+        <attribute name="syncRevision" optional="YES" attributeType="Integer 64" defaultValueString="0" usesScalarValueType="YES"/>
+        <attribute name="updatedAt" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="uuid" attributeType="UUID" usesScalarValueType="YES"/>
+        <relationship name="carer" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="SNCarer" inverseName="baseUser" inverseEntity="SNCarer">
+            <userInfo>
+                <entry key="docs" value="Not empty only for app users."/>
+            </userInfo>
+        </relationship>
+        <relationship name="contentManager" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="SNContentManager" inverseName="baseUser" inverseEntity="SNContentManager">
+            <userInfo>
+                <entry key="docs" value="Not empty only for content managers."/>
+            </userInfo>
+        </relationship>
+        <relationship name="readSlides" optional="YES" toMany="YES" deletionRule="Nullify" destinationEntity="SNTheorySlide" inverseName="readBy" inverseEntity="SNTheorySlide"/>
+        <relationship name="readSubchapters" optional="YES" toMany="YES" deletionRule="Nullify" destinationEntity="SNTheorySubchapter" inverseName="readBy" inverseEntity="SNTheorySubchapter"/>
+        <relationship name="subscriptionState" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="SNSubscriptionState" inverseName="user" inverseEntity="SNSubscriptionState"/>
+    </entity>
+</model>
