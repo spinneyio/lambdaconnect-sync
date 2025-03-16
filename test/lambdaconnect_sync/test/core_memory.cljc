@@ -7,6 +7,7 @@
             [lambdaconnect-sync.migrations :as migrations]
             [lambdaconnect-sync.db-drivers.memory :as memory]
             [lambdaconnect-model.scoping :as scoping]         
+            [lambdaconnect-model.graph-generator :as generator]
 
             #?@(:cljs [[clojure.test.check.generators]
                        [cljs.spec.gen.alpha :as gen]
@@ -24,7 +25,12 @@
 
 (use-fixtures :once (partial b/setup-basic-test-environment (b/load-model-fixture "test-model-0.xml") 
                              {:LAUser/email (fn [] (gen/fmap #(str % "@test.com") (gen/string-alphanumeric)))
-                              :LAUser/gender #(s/gen #{"U" "M" "F"})}))
+                              :LAUser/gender #(s/gen #{"U" "M" "F"})
+                              :LALocation/leftHash #(s/gen #{"aaa" "bbb"})
+                              :LALocation/rightHash #(s/gen #{"aaa" "bbb"})
+                              :LALocation/topHash #(s/gen #{"aaa" "bbb"})
+                              :LALocation/bottomHash #(s/gen #{"aaa" "bbb"})
+                              :LALocation/centerHash #(s/gen #{"aaa" "bbb"})}))
 
 (defn push-transaction [snapshot user-uuid params suppress-log? constants]
   (let [entities-by-name (mp/entities-by-name (b/load-model-fixture "test-model-0.xml"))
@@ -75,9 +81,36 @@
         new-attribute-wrong-model (assoc-in model ["LAGame" :attributes "lolo"] new-attribute)
         new-fixed-attribute (assoc new-attribute :default-value "aaaa")
         new-attribute-model (assoc-in model ["LAGame" :attributes "lolo"] new-fixed-attribute)
-        new-entity-model (assoc model "LADoom" (get model "LAGame"))]
+        new-entity-model (assoc model "LADoom" (get model "LAGame"))
+        db (memory/create-db "Baza" model)
+
+        graph (dissoc 
+               (generator/generate-entity-graph model {:vertices 100
+                                                       :edges 1000
+                                                              :create-sync-revisions? true
+                                                       :force-active? true})
+               "LASyncInfo")
+        user-uuid (random-uuid)
+        date-parser (mpt/parser-for-attribute (get-in model ["LAGame" :attributes "updatedAt"]))
+        [initial-tx]
+        (sync/push-transaction
+         {:config b/mobile-sync-config
+          :incoming-json graph
+          :internal-user user-uuid
+          :snapshot db
+          :entities-by-name model
+          :scoping-edn nil
+          :slave-mode? true
+          :sync-revision-for-slave-mode 0
+          :now (date-parser "2060-01-01T01:02:00.000Z")})
+        db2 (db/speculate b/mobile-sync-config db initial-tx)]
+
     (is (= (count model) 6))
-    (empty? (migrations/model-migration-tx-builder model model))
+    (is (empty? (migrations/model-migration-tx-builder model model)))
+    (is (= (:database (memory/migrate db2 model)) db2))
+    (is (not (:migration-happened (memory/migrate db2 model))))
+    (is (not= (:database (memory/migrate db2 new-attribute-model)) db2))
+    (is (:migration-happened (memory/migrate db2 new-attribute-model)))
     (is (thrown-with-msg? #?(:clj clojure.lang.ExceptionInfo :cljs js/Error) #"Migration failed" (migrations/model-migration-tx-builder model wrong-model)))
     (is (thrown-with-msg? #?(:clj clojure.lang.ExceptionInfo :cljs js/Error) #"Migration failed: New non-optional attributes must have a default value. Entity: 'LAGame' attribute 'lolo'" (migrations/model-migration-tx-builder model new-attribute-wrong-model)))
 

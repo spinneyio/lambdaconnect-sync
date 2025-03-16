@@ -377,7 +377,7 @@
                 (is (= {:db/id baby-2, :app/uuid #uuid "f845c7d2-391e-49af-af2e-8e19e28a6666"} (:SNSleepPrediction/baby prediction)))
                 (is (= true (:app/active prediction)) prediction)))))))))
 
-(deftest ^:test-refresh/focus test-resolving-m-n-relation-conflicts
+(deftest test-resolving-m-n-relation-conflicts
   (let [ebn (mp/entities-by-name (b/load-model-fixture "snoozer.xml"))
         _ (mp/specs ebn {:SNBaby/gender #(s/gen #{"Male" "Female" "Other"})
                          :SNSubscriptionOrder/providerType #(s/gen #{"imoje" "appstore" "googleplay"})
