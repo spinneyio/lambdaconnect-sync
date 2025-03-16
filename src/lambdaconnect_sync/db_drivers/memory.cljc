@@ -1,6 +1,7 @@
 (ns lambdaconnect-sync.db-drivers.memory
   (:require [lambdaconnect-model.data-xml :as xml]
             [lambdaconnect-sync.db-interface :as i]
+            [lambdaconnect-sync.migrations :as migrations]
             [lambdaconnect-sync.hooks :refer [get-datomic-relationships-from-model 
                                               get-ids-from-entry
                                               update-ids-in-entry]]
@@ -946,3 +947,17 @@
   ([database entity-name page per-page]
    (get-paginated-collection database entity-name page per-page [] nil)))
 
+(defn migrate 
+  "Tries to migrate database to the new model. Returns info if migraton actually happened + new database"
+  [database new-model]
+  (if (= (:entities-by-name database) new-model)
+    {:migration-happened false
+     :database database}
+    {:migration-happened true
+     :database (let [tx-builder (migrations/model-migration-tx-builder (:entities-by-name database) new-model)
+                     tx (mapcat (fn [[entity-name migrator]]
+                                  (mapcat migrator (vals (get-collection database entity-name))))
+                                tx-builder)]
+                 (-> database
+                     (assoc :entities-by-name new-model)
+                     (apply-transaction tx)))}))
