@@ -159,6 +159,7 @@
                     (first)
                     (assoc :LAUser/internalUserId user-uuid)
                     (assoc :LAUser/address nil)
+                    (assoc :LAUser/internalNotes [])
                     (assoc :LAUser/organisedGames [])
                     (assoc :LAUser/playsFor []))
         {:keys [tx rejections]} 
@@ -184,6 +185,7 @@
                     (first)
                     (assoc :LAUser/internalUserId user-uuid)
                     (assoc :LAUser/address {:app/uuid location-uuid})
+                    (assoc :LAUser/internalNotes [])
                     (assoc :LAUser/organisedGames [])
                     (assoc :LAUser/playsFor []))
         la-location (-> (gen/sample (s/gen (mp/spec-for-name :LALocation)) 100)
