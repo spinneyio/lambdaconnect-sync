@@ -36,4 +36,7 @@
                                      :create false}}
  :LASyncInfo.system {:constraint :all
                      :permissions {:modify true
-                                   :create false}}}
+                                   :create false}}
+ :LAInternalNote.none {:constraint :none
+                       :permissions {:modify false
+                                     :create false}}}

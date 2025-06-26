@@ -1,9 +1,9 @@
 (ns lambdaconnect-sync.conflicts
-  (:require [clojure.set :refer [difference union]]
-            [lambdaconnect-sync.db :as db]
+  (:require #?(:clj [lambdaconnect-model.utils :refer [log-with-fn]])
+            [clojure.set :refer [difference union]]
             [lambdaconnect-model.core :as mp]
-            #?(:clj [lambdaconnect-model.utils :refer [log-with-fn]])
-            [clojure.pprint :refer [pprint]])
+            [lambdaconnect-sync.db :as db]
+            [lambdaconnect-sync.pull :as pull])
   #?(:cljs (:require-macros [lambdaconnect-model.utils :refer [log-with-fn]])))
 
 (defn override-creation-attributes
@@ -24,7 +24,7 @@
 (defn resolve-modification-conflicts
   "This should throw an exception if the update is not allowed
    and solve any merge conflicts. This function must be pure as it is not certain if the database will be saved or rolled back."
-  [config old-object new-object entity _internal-user snapshot]
+  [config old-object new-object entity _internal-user snapshot entities-by-name scoping-edn scoped-tags scoped-ids]
   (let [update-active #(if (and old-object
                                 (not (:app/active old-object))
                                 (not (nil? (:app/active old-object)))
@@ -35,7 +35,19 @@
                                   (if-let [sync-revision (:app/syncRevision new-object)]
                                     (if (and old-object (not (string? (:db/id old-object)))) ; old-object can be a freshly created one - then there is no conflict possible 
                                       (if-let [base-snapshot (db/as-of config snapshot sync-revision)]
-                                        (if-let [base-object (mp/replace-inverses (first (db/get-objects-by-ids config entity [(:db/id old-object)] base-snapshot true)) entity true)]
+                                        (if-let [base-object (-> config
+                                                                 (db/get-objects-by-ids entity [(:db/id old-object)] base-snapshot true)
+                                                                 first
+                                                                 (mp/replace-inverses entity true)
+                                                                 ;; Filter out relationships to objects out of scope, skip constant replacement
+                                                                 (pull/scoped-object
+                                                                  entities-by-name
+                                                                  entity
+                                                                  scoping-edn
+                                                                  scoped-tags
+                                                                  scoped-ids
+                                                                  {}
+                                                                  {}))]
                                           
                                         ; so here we go, an update operation and three objects to compare:
                                         ; 
@@ -51,7 +63,7 @@
                                         ;     b) If it is a to-many relationship
                                         ;        --> We take A = new-object \ base-object, B = base-object \ new-object and take:
                                         ;                (old-object u A) \ B
- 
+
                                           (merge
                                            (into {} (map (fn [attr-or-to-one]
                                                            (let [kw (mp/datomic-name attr-or-to-one)]

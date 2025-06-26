@@ -33,7 +33,7 @@
   (if (nil? scoping-edn) object
       (let [tags (get tags-by-ids (:db/id object))
             replacements (reduce merge {} (map #(:replace-fields (% scoping-edn)) tags))]
-        (assert (seq tags) (str "We require tags assigned to the object at this stage: " object))
+        ;; (assert (seq tags) (str "We require tags assigned to the object at this stage: " object))
         (assert (not (nil? scoped-ids)))
         (assert (not (nil? tags-by-ids)))
         (update-vals object 
