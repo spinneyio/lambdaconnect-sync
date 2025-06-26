@@ -299,7 +299,10 @@
    created-entities-uuids ; a set of uuids of objects that are to be created
    now
    slave-mode?
-   sync-revision-for-slave-mode]
+   sync-revision-for-slave-mode
+   scoping-edn
+   scoped-tags
+   scoped-ids]
   (doall   
    (set
     (apply concat
@@ -318,7 +321,6 @@
                                    db-id (:db/id db-object)
                                    db-uuid (:app/uuid db-object)
                                         ; --------- attributes -------
-                                   
                                    conflict-resolved-object (conflicts/resolve-modification-conflicts 
                                                              config 
                                                              db-object 
@@ -326,7 +328,11 @@
                                                                (assoc object :app/syncRevision sync-revision-for-slave-mode) object) 
                                                              entity 
                                                              internal-user 
-                                                             snapshot)
+                                                             snapshot
+                                                             entities-by-name
+                                                             scoping-edn
+                                                             scoped-tags
+                                                             scoped-ids)
                                    
                                    _ (log-with-fn (:log config) "CONFLICT R:: " conflict-resolved-object)
                                    
@@ -382,7 +388,7 @@
                                (concat attribute-modification-transaction relationship-modification-transaction special-modification-transaction))) entity-objects)))) (vec input))))))
 
 (defn- internal-push-transaction
-  [config incoming-json internal-user snapshot entities-by-name scoped-push-input-for-user now slave-mode? sync-revision-for-slave-mode]
+  [config incoming-json internal-user snapshot entities-by-name scoped-push-input-for-user now slave-mode? scoping-edn sync-revision-for-slave-mode]
   (try
     (log-with-fn (:log config) "=========---------===========--------- PUSH ----------============-----------============")
     (log-with-fn (:log config) "INCOMING: " incoming-json)
@@ -414,11 +420,19 @@
                               (set (keys input))
                               " are not present in the model: "
                               (set (keys entities-by-name)))))
-      (let [[created-objects updated-objects] (p :fetch-and-create (fetch-and-create-objects config objects-to-fetch entities-by-name snapshot))
+      (let [scoping-constants (:constants scoping-edn)
+            _ (when scoping-constants (assert (fn? scoping-constants)))
+            scoping-constants (when scoping-constants (scoping-constants snapshot internal-user))
+            scoping-edn-with-constants (if scoping-constants (assoc scoping-edn :constants scoping-constants) scoping-edn)
+            [scoped-tags scoped-ids _tags-by-ids]
+            (when scoping-edn
+              (let [scoped-tags (scoping/scope config snapshot internal-user entities-by-name scoping-edn-with-constants false (set (keys scoping-edn)))]
+                [scoped-tags (scoping/reduce-entities scoped-tags) (scoping/inverse-entities scoped-tags)]))
+            [created-objects updated-objects] (p :fetch-and-create (fetch-and-create-objects config objects-to-fetch entities-by-name snapshot))
             all-objects (p :app-objects (u/join-maps merge [created-objects updated-objects]))
             pure-created-objects (p :pure-created (apply concat (map vals (vals created-objects))))
             created-uuids (p :created-set (set (map :app/uuid pure-created-objects)))
-            updated-all-objects (p :update-changed (update-changed-objects-transaction config internal-user all-objects input entities-by-name snapshot created-uuids now slave-mode? sync-revision-for-slave-mode))
+            updated-all-objects (p :update-changed (update-changed-objects-transaction config internal-user all-objects input entities-by-name snapshot created-uuids now slave-mode? sync-revision-for-slave-mode scoping-edn scoped-tags scoped-ids))
             transaction (p :transaction (concat pure-created-objects updated-all-objects))
             _ (log-with-fn (:log config) "FULL TRANSACTION: " transaction)
             [foreign-keys-in-db response invalid-uuids] (p :foreign-key (i/check-foreign-key config input snapshot (i/relations entities-by-name)))
@@ -871,6 +885,7 @@
                                            (fn [i _ _ _] [i {}]) 
                                            now
                                            slave-mode?
+                                           scoping-edn
                                            sync-revision-for-slave-mode)]
      (scoped-push-transaction (assoc params :config config)
                        primer

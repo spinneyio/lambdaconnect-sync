@@ -24,6 +24,14 @@
             <entry key="metadata" value="1"/>
         </userInfo>
     </entity>
+    <entity name="LAInternalNote" representedClassName=".LAInternalNote" syncable="YES">
+        <attribute name="active" attributeType="Boolean" defaultValueString="YES" usesScalarValueType="NO" syncable="YES"/>
+        <attribute name="createdAt" attributeType="Date" minDateTimeInterval="0" usesScalarValueType="NO" syncable="YES"/>
+        <attribute name="updatedAt" attributeType="Date" usesScalarValueType="NO" syncable="YES"/>
+        <attribute name="uuid" attributeType="String" maxValueString="36" syncable="YES"/>
+        <attribute name="content" optional="YES" attributeType="String" syncable="YES"/>
+        <relationship name="user" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="LAUser" inverseName="internalNotes" inverseEntity="LAUser" syncable="YES"/>
+    </entity>
     <entity name="LALocation" representedClassName=".LALocation" syncable="YES">
         <attribute name="active" attributeType="Boolean" defaultValueString="YES" usesScalarValueType="NO" syncable="YES"/>
         <attribute name="bottomHash" optional="YES" attributeType="String" maxValueString="3" minValueString="3" indexed="YES" syncable="YES"/>
@@ -92,6 +100,7 @@
         <attribute name="updatedAt" attributeType="Date" usesScalarValueType="NO" syncable="YES"/>
         <attribute name="uuid" attributeType="String" maxValueString="36" syncable="YES"/>
         <relationship name="address" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="LALocation" inverseName="users" inverseEntity="LALocation" syncable="YES"/>
+        <relationship name="internalNotes" optional="YES" toMany="YES" deletionRule="Nullify" destinationEntity="LAInternalNote" inverseName="user" inverseEntity="LAInternalNote" syncable="YES"/>
         <relationship name="organisedGames" optional="YES" toMany="YES" deletionRule="Nullify" destinationEntity="LAGame" inverseName="organiser" inverseEntity="LAGame" syncable="YES"/>
         <relationship name="playsFor" optional="YES" toMany="YES" deletionRule="Nullify" destinationEntity="LATeam" inverseName="organiser" inverseEntity="LATeam" syncable="YES"/>
     </entity>

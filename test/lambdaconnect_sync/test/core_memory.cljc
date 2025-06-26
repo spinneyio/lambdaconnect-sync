@@ -105,7 +105,7 @@
           :now (date-parser "2060-01-01T01:02:00.000Z")})
         db2 (db/speculate b/mobile-sync-config db initial-tx)]
 
-    (is (= (count model) 6))
+    (is (= (count model) 7))
     (is (empty? (migrations/model-migration-tx-builder model model)))
     (is (= (:database (memory/migrate db2 model)) db2))
     (is (not (:migration-happened (memory/migrate db2 model))))
@@ -142,7 +142,7 @@
   (testing "Schema from model"
     (let [model (mp/entities-by-name (b/load-model-fixture "test-model-0.xml"))
           schema (mp/datomic-schema model)]
-      (is (= (+ 43 8 (count model)) (count schema)))))
+      (is (= (+ 43 11 (count model)) (count schema)))))
 
   (testing "User info"
     (let [model (mp/entities-by-name (b/load-model-fixture "test-model-0.xml"))]
@@ -159,6 +159,7 @@
                     (first)
                     (assoc :LAUser/internalUserId user-uuid)
                     (assoc :LAUser/address nil)
+                    (assoc :LAUser/internalNotes [])
                     (assoc :LAUser/organisedGames [])
                     (assoc :LAUser/playsFor []))
         {:keys [tx rejections]} 
@@ -184,6 +185,7 @@
                     (first)
                     (assoc :LAUser/internalUserId user-uuid)
                     (assoc :LAUser/address {:app/uuid location-uuid})
+                    (assoc :LAUser/internalNotes [])
                     (assoc :LAUser/organisedGames [])
                     (assoc :LAUser/playsFor []))
         la-location (-> (gen/sample (s/gen (mp/spec-for-name :LALocation)) 100)

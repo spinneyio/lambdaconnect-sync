@@ -84,7 +84,7 @@
 (deftest test-core-data-xml-conversion
   (testing "Reading model file one"
     (let [model (mp/entities-by-name "env/test/resources/test-model-0.xml")]
-      (is (= (count model) 6))
+      (is (= (count model) 7))
       (testing ";Json to model converter"
         (try
           (let [game-model (get model "LAGame")
@@ -107,7 +107,7 @@
   (testing "Schema from model"
     (let [model (mp/entities-by-name "env/test/resources/test-model-0.xml")
           schema (mp/datomic-schema model)]
-      (is (= (+ 43 8 (count model)) (count schema)))))
+      (is (= (+ 43 11 (count model)) (count schema)))))
   
   (testing "User info"
     (let [model (mp/entities-by-name "env/test/resources/test-model-0.xml")]
@@ -124,6 +124,7 @@
                     (first)
                     (assoc :LAUser/internalUserId user-uuid)
                     (assoc :LAUser/address nil)
+                    (assoc :LAUser/internalNotes [])
                     (assoc :LAUser/organisedGames [])
                     (assoc :LAUser/playsFor []))
         {:keys [tx rejections]} 
@@ -149,6 +150,7 @@
                     (first)
                     (assoc :LAUser/internalUserId user-uuid)
                     (assoc :LAUser/address nil)
+                    (assoc :LAUser/internalNotes [])
                     (assoc :LAUser/organisedGames [])
                     (assoc :LAUser/playsFor []))
         {:keys [tx rejections]} 
@@ -174,6 +176,7 @@
                     (first)
                     (assoc :LAUser/internalUserId user-uuid)
                     (assoc :LAUser/address nil)
+                    (assoc :LAUser/internalNotes [])
                     (assoc :LAUser/organisedGames [])
                     (assoc :LAUser/playsFor []))
         {:keys [tx rejections]} 
@@ -235,10 +238,11 @@
                     (first)
                     (assoc :LAUser/internalUserId user-uuid)
                     (assoc :LAUser/address {:app/uuid location-uuid})
+                    (assoc :LAUser/internalNotes [])
                     (assoc :LAUser/organisedGames [])
                     (assoc :LAUser/playsFor []))
         la-location (-> (gen/sample (s/gen (mp/spec-for-name :LALocation)) 100)
-                        (first)                        
+                        (first)
                         (assoc :app/uuid location-uuid)
                         (assoc :LALocation/city "Krakow")
                         (assoc :LALocation/latitude 31.21)
@@ -247,11 +251,11 @@
                         (assoc :LALocation/users [{:app/uuid (:app/uuid la-user)}])
                         (assoc :LALocation/ticketsSold []))
         json {"LAUser" [(mp/clojure-to-json la-user (get ebn "LAUser"))]
-              "LALocation" [(mp/clojure-to-json la-location (get ebn "LALocation"))]} 
-        {:keys [tx rejections]} 
+              "LALocation" [(mp/clojure-to-json la-location (get ebn "LALocation"))]}
+        {:keys [tx rejections]}
         (testing "creating an object"
           (push-transaction snapshot user-uuid json
-                            true (fn [_snapshot _user] 
+                            true (fn [_snapshot _user]
                                    {:wow (delay true)
                                     :are-you-there? false
                                     :can-create? true
@@ -260,51 +264,51 @@
         {:keys [rejected-objects rejected-fields]} rejections]
     (is (not (empty? tx)))
     (is (empty? rejected-objects))
-    (is (empty? rejected-fields))    
-    
+    (is (empty? rejected-fields))
+
     (testing "Do a pull (fails because constant 'lat' is not defined)"
       (let [snapshot (db/speculate b/mobile-sync-config snapshot tx)]
         ;; Lazy nightmare
-        (is (thrown? java.lang.AssertionError 
-                     (doseq [x (vals (pull snapshot user-uuid {"LAUser" 0 "LALocation" 0} 
-                                           true (fn [_snapshot _user] 
+        (is (thrown? java.lang.AssertionError
+                     (doseq [x (vals (pull snapshot user-uuid {"LAUser" 0 "LALocation" 0}
+                                           true (fn [_snapshot _user]
                                                   {:wow (delay true)
                                                    :are-you-there? false
                                                    :can-create? true
-                                                   :whatsupp? true                                                                                  
+                                                   :whatsupp? true
                                                    :some-new-fields ["firstName"]})))]
                        (doall x))))))
-    
+
     (testing "Do a pull and see what came in - replacements should have arrived"
       (let [snapshot (db/speculate b/mobile-sync-config snapshot tx)
-            result (pull snapshot user-uuid {"LAUser" 0 "LALocation" 0} 
+            result (pull snapshot user-uuid {"LAUser" 0 "LALocation" 0}
                          true (fn [_snapshot _user]
                                 {:wow (delay true)
                                  :are-you-there? false
                                  :can-create? true
-                                 :whatsupp? true                                
+                                 :whatsupp? true
                                  :lat 82.3
                                  :some-new-fields ["firstName"]}))]
         ;; Replacement with another field
-        (is (= "Polska" (-> result 
+        (is (= "Polska" (-> result
                             (get "LALocation")
                             (first)
                             (get "city"))))
         ;; Replacement with a constant        
-        (is (> Epsilon (abs (- 82.3 (-> result 
+        (is (> Epsilon (abs (- 82.3 (-> result
                                         (get "LALocation")
                                         (first)
                                         (get "latitude"))))))))
-    
+
     (testing "Try editing succeeds but replaced fields are not actually replaced"
       (let [snapshot (db/speculate b/mobile-sync-config snapshot tx)
-            {:keys [tx rejections]} 
-            (push-transaction snapshot user-uuid {"LALocation" 
-                                                  [(mp/clojure-to-json (assoc la-location 
+            {:keys [tx rejections]}
+            (push-transaction snapshot user-uuid {"LALocation"
+                                                  [(mp/clojure-to-json (assoc la-location
                                                                               :LALocation/city "Bombaj"
-                                                                              :LALocation/latitude 85.0) 
-                                                                       (get ebn "LALocation"))]} 
-                              true (fn [_snapshot _user] 
+                                                                              :LALocation/latitude 85.0)
+                                                                       (get ebn "LALocation"))]}
+                              true (fn [_snapshot _user]
                                      {:wow (delay true)
                                       :are-you-there? false
                                       :can-create? true
@@ -313,6 +317,42 @@
                                       :some-new-fields ["firstName"]}))
             {:keys [rejected-objects rejected-fields]} rejections]
 
+        (is (empty? tx))
+        (is (empty? rejected-fields))
+        (is (empty? rejected-objects))))
+
+    (testing "Do not erase a relation if the object on the other side is out of scope"
+      (let [internal-note-uuid (random-uuid)
+            la-internal-note (-> (gen/sample (s/gen (mp/spec-for-name :LAInternalNote)) 1)
+                                 (first)
+                                 (assoc :app/uuid internal-note-uuid)
+                                 (assoc :LAInternalNote/user {:app/uuid (:app/uuid la-user)}))
+            snapshot (db/speculate b/mobile-sync-config snapshot (conj tx la-internal-note))
+            pull-result (pull snapshot user-uuid {"LAUser" 0 "LAInternalNote" 0}
+                              true (fn [_snapshot _user]
+                                     {:wow (delay true)
+                                      :are-you-there? false
+                                      :can-create? true
+                                      :whatsupp? true
+                                      :lat 82.3
+                                      :some-new-fields ["firstName"]}))
+            {:keys [tx rejections]}
+            (push-transaction snapshot user-uuid {"LAUser"
+                                                  [(assoc
+                                                    (mp/clojure-to-json la-user (get ebn "LAUser"))
+                                                    "syncRevision" (-> pull-result (get "LAUser") first (get "syncRevision")))]}
+                              true (fn [_snapshot _user]
+                                     {:wow (delay true)
+                                      :are-you-there? false
+                                      :can-create? true
+                                      :lat 82.3
+                                      :whatsupp? true
+                                      :some-new-fields ["firstName"]}))
+            {:keys [rejected-objects rejected-fields]} rejections]
+      
+        (is (empty? (get pull-result "LAInternalNote")))
+        (is (empty? (get-in pull-result ["LAUser" 0 "internalNotes"])))
+        
         (is (empty? tx))
         (is (empty? rejected-fields))
         (is (empty? rejected-objects))))))
