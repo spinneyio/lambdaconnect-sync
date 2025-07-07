@@ -388,7 +388,7 @@
                                (concat attribute-modification-transaction relationship-modification-transaction special-modification-transaction))) entity-objects)))) (vec input))))))
 
 (defn- internal-push-transaction
-  [config incoming-json internal-user snapshot entities-by-name scoped-push-input-for-user now slave-mode? scoping-edn sync-revision-for-slave-mode]
+  [config incoming-json internal-user snapshot entities-by-name scoped-push-input-for-user now slave-mode? scoping-edn sync-revision-for-slave-mode scoped-tags scoped-ids]
   (try
     (log-with-fn (:log config) "=========---------===========--------- PUSH ----------============-----------============")
     (log-with-fn (:log config) "INCOMING: " incoming-json)
@@ -420,15 +420,7 @@
                               (set (keys input))
                               " are not present in the model: "
                               (set (keys entities-by-name)))))
-      (let [scoping-constants (:constants scoping-edn)
-            _ (when scoping-constants (assert (fn? scoping-constants)))
-            scoping-constants (when scoping-constants (scoping-constants snapshot internal-user))
-            scoping-edn-with-constants (if scoping-constants (assoc scoping-edn :constants scoping-constants) scoping-edn)
-            [scoped-tags scoped-ids _tags-by-ids]
-            (when scoping-edn
-              (let [scoped-tags (scoping/scope config snapshot internal-user entities-by-name scoping-edn-with-constants false (set (keys scoping-edn)))]
-                [scoped-tags (scoping/reduce-entities scoped-tags) (scoping/inverse-entities scoped-tags)]))
-            [created-objects updated-objects] (p :fetch-and-create (fetch-and-create-objects config objects-to-fetch entities-by-name snapshot))
+      (let [[created-objects updated-objects] (p :fetch-and-create (fetch-and-create-objects config objects-to-fetch entities-by-name snapshot))
             all-objects (p :app-objects (u/join-maps merge [created-objects updated-objects]))
             pure-created-objects (p :pure-created (apply concat (map vals (vals created-objects))))
             created-uuids (p :created-set (set (map :app/uuid pure-created-objects)))
@@ -529,7 +521,9 @@
            internal-user 
            snapshot 
            entities-by-name
-           scoping-edn] 
+           scoping-edn
+           scoping-edn-with-constants
+           scoped-tags]
     :as params}
    push-output 
    rejections 
@@ -543,15 +537,13 @@
             new-db (db/speculate config snapshot transaction) ; we simulate the transaction to simplify tag discovery and never look at the ugly incoming-json
                                         ; the following permissions come from the speculated db snapshot (new-db)
 
-            scoping-edn (if (:constants original-scoping-edn)
-                          (update original-scoping-edn :constants #(% snapshot internal-user))
-                          original-scoping-edn)
+            scoping-edn scoping-edn-with-constants
 
             new-scoping-edn (if (:constants original-scoping-edn)
                               (update original-scoping-edn :constants #(% new-db internal-user))
                               original-scoping-edn)
 
-            scoped-tags (future ; {:NOUser.me #{#uuid1 #uuid2 #uuid3}, :NOMessage.mine #{#uuid4 #uuid5 #uuid6}} (:app/uuid's are the values in sets)
+            new-scoped-tags (future ; {:NOUser.me #{#uuid1 #uuid2 #uuid3}, :NOMessage.mine #{#uuid4 #uuid5 #uuid6}} (:app/uuid's are the values in sets)
                           (when scoping-edn 
                             (mu/map-keys (fn [ids] (set (db/uuids-for-ids config new-db ids))) ; we need uuids not ids this time
                                          (scoping/scope config new-db internal-user entities-by-name new-scoping-edn true)))) 
@@ -561,11 +553,11 @@
                                        (when scoping-edn 
                                          (mu/map-keys 
                                           (fn [ids] (set (db/uuids-for-ids config snapshot ids))) ; we need uuids not ids this time
-                                          (scoping/scope config snapshot internal-user entities-by-name scoping-edn true))))) 
+                                          scoped-tags))))
             
-            tags-by-ids (when @scoped-tags 
-                          (scoping/inverse-entities (u/join-maps [@scoped-tags @scoped-tags-snapshot])))]
-        (if (not @scoped-tags) [transaction [created-objects updated-objects] {:rejected-objects {}
+            tags-by-ids (when @new-scoped-tags 
+                          (scoping/inverse-entities (u/join-maps [@new-scoped-tags @scoped-tags-snapshot])))]
+        (if (not @new-scoped-tags) [transaction [created-objects updated-objects] {:rejected-objects {}
                                                                                :rejected-fields {}}]
             (let ;scoping starts here
                 [_ (log-with-fn (:log config) (str "----> ORIGINAL TRANSACTION: " (vec transaction)))
@@ -877,6 +869,16 @@
          config (if (:driver config)
                   config
                   (assoc config :driver (datomic-driver/->DatomicDatabaseDriver config)))
+         
+         scoping-constants (:constants scoping-edn)
+         _ (when scoping-constants (assert (fn? scoping-constants)))
+         scoping-constants (when scoping-constants (scoping-constants snapshot internal-user))
+         scoping-edn-with-constants (if scoping-constants (assoc scoping-edn :constants scoping-constants) scoping-edn)
+         [scoped-tags scoped-ids]
+         (when scoping-edn
+           (let [scoped-tags (scoping/scope config snapshot internal-user entities-by-name scoping-edn-with-constants true)]
+             [scoped-tags (scoping/reduce-entities scoped-tags)]))
+         
          primer (internal-push-transaction config 
                                            incoming-json 
                                            internal-user 
@@ -886,8 +888,13 @@
                                            now
                                            slave-mode?
                                            scoping-edn
-                                           sync-revision-for-slave-mode)]
-     (scoped-push-transaction (assoc params :config config)
+                                           sync-revision-for-slave-mode
+                                           scoped-tags
+                                           scoped-ids)]
+     (scoped-push-transaction (assoc params
+                                     :config config
+                                     :scoping-edn-with-constants scoping-edn-with-constants
+                                     :scoped-tags scoped-tags)
                        primer
                        {:rejected-objects {} :rejected-fields {}} 
                        nil)))
